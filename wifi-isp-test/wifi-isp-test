@@ -1,0 +1,177 @@
+let i = -1;
+
+// =============================================================================
+
+let t1 = null;
+function start_check_random_api(){
+  //print("Connecting to public api...")
+  // wait 5 seconds and test
+  t1 = Timer.set(5000, false, check_random_api);
+};
+
+function stop_check_random_api(){
+  Timer.clear(t1);
+};
+
+function check_random_api (){
+
+  Shelly.call("HTTP.GET",
+    { url: "https://api.publicapis.org/random", timeout: 10 },
+    function (result) {
+      if(!result || result.code >= 500){
+        stop_check_nasdaq_google_dns();
+        start_check_nasdaq_google_dns();
+      } else {
+        //print ("Connected to API. All is well");
+        stop_check_random_api();
+      }
+    },
+    null
+  );
+  
+};
+
+// =============================================================================
+
+let t2 = null;
+function start_check_nasdaq_google_dns(){
+  stop_check_random_api();
+  //print("Attempting to connect to Nasdaq...");
+  // wait 1 minute and test
+  t2 = Timer.set(60000, false, check_nasdaq_google_dns);
+};
+
+function stop_check_nasdaq_google_dns(){
+  Timer.clear(t2);
+};
+
+function check_nasdaq_google_dns (){
+
+  Shelly.call("HTTP.GET",
+    { url: "https://dns.google/resolve?name=nasdaq.com&type=A", timeout: 10 },
+    function (result) {
+      if(!result || result.code >= 500){
+        stop_check_facebook_google_dns();
+        start_check_facebook_google_dns();
+      } else {
+        //print ("Connected to Nasdaq. All is well");
+        stop_check_nasdaq_google_dns();
+      }
+    },
+    null
+  );
+  
+};
+
+// =============================================================================
+
+let t3 = null;
+function start_check_facebook_google_dns(){
+  stop_check_nasdaq_google_dns();
+  //print("Attempting to connect to Facebook...");
+  // wait 5 minutes and test
+  t3 = Timer.set(300000, false, check_facebook_google_dns);
+};
+
+function stop_check_facebook_google_dns(){
+  Timer.clear(t3);
+};
+
+let t4 = null;
+function start_recheck(){
+  stop_check_facebook_google_dns();
+  // wait 30 minutes and test all over again
+  t4 = Timer.set(1800000, false, check_ISP);
+};
+
+function stop_recheck(){
+  Timer.clear(t4);
+};
+
+function check_facebook_google_dns (){
+
+  Shelly.call("HTTP.GET",
+    { url: "https://dns.google/resolve?name=facebook.com&type=A", timeout: 10 },
+    function (result) {
+      if(!result || result.code >= 500){
+        stop_recheck();
+        start_recheck();
+      } else {
+        //print ("Connected to Facebook.All is well");
+        stop_check_facebook_google_dns();
+        stop_recheck();
+      }
+    },
+    null
+  );
+  
+};
+
+// =============================================================================
+
+function check_ISP(){
+  //print('Checking Internet...');
+  // call different sites in cascade
+  stop_check_random_api();
+  start_check_random_api();
+};
+
+// =============================================================================
+
+function disable_wifi(){
+
+  Shelly.call(
+    "WiFi.SetConfig",
+    { "config":{ "sta":{"enable":false} } },
+    function () {
+    },
+    null
+  );
+  
+};
+
+function enable_wifi(){
+    
+  Shelly.call(
+    "WiFi.SetConfig",
+    { "config":{ "sta":{"enable":true} } },
+    function () {
+    },
+    null
+  );
+  
+  Timer.clear(t0);
+  
+}
+
+let t0 = null;
+function reset_wifi_connection(){
+  //print("Rebooting Wifi connection...");
+  disable_wifi();
+  t0 = Timer.set(60000, true, enable_wifi);
+};
+
+function check_Wifi(){
+  //print("Retrieving Wifi Status...");
+  
+  Shelly.call(
+    "WiFi.GetStatus",
+    {  },
+    function (result) {
+      if(!result){
+        //print('No Wifi connection');
+        reset_wifi_connection();
+      } else {
+        Timer.clear(t0);
+        //print('Wifi is connected');
+        check_ISP();
+      }
+    },
+    null
+  );
+
+};
+
+// =============================================================================
+
+check_Wifi();

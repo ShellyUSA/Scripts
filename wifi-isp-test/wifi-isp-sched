@@ -1,0 +1,34 @@
+let t0, t1 = null;
+let CONFIG = {
+    loopInterval: 60*60*24,   // Once a day = 60 seconds * 60 minutes * 24 hours
+    runInterval: 60*1,        // One minute until reaches the right test time
+    testTime: "00:00",        // Define the time the test will happen in a 24h format >>> 4am = 04:00 & 4pm = 16:00
+};
+
+let sysTime = '19:00';        // Initializing the variable. 
+
+function run_script(){
+    // print("Schedule Trigger");
+    Shelly.call( "Script.Stop", { id: 1 }, function () {} );    // Make sure the script "wifi-isp-test" is not running
+    Shelly.call( "Script.Start", { id: 1 }, function () {} );   // Run the script "wifi-isp-test"
+};
+
+function run_schedule(){
+  Shelly.call(
+      "Shelly.GetStatus",
+      {  },
+      function (res) {
+        sysTime = res.sys.time;
+        if(sysTime === CONFIG.testTime){
+          Timer.clear(t1);
+          Timer.clear(t0);
+          t0 = Timer.set(CONFIG.loopInterval * 1000, true, run_script);
+        };
+  
+      },
+      null
+    );
+}
+
+Timer.clear(t1);
+t1 = Timer.set(CONFIG.runInterval * 1000, true, run_schedule);
