@@ -46,4 +46,11 @@ rodrigo.henriques@shellyusa.com
 ## Roadmap
 replace urls by objects
 
-## Project blocks and workarounds
+
+## Contributing
+Doug Roberson: doug.roberson@shellyusa.com
+Michael Salerno: michael.salerno@shellyusa.com
+
+## Authors and acknowledgment
+AUT: Rodrigo Henriques: rodrigo.henriques@shellyusa.com
+AKN: Lyubomir Petrov: lyubomir.petrov@shellyusa.com
