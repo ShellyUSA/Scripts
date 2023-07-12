@@ -1,0 +1,18 @@
+{
+  "name": "inbound-ws-examples",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "websocket": "^1.0.34",
+    "ws": "^8.11.0"
+  }
+}
