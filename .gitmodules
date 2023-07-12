@@ -1,0 +1,3 @@
+[submodule "wifi-isp-test"]
+	path = wifi-isp-test
+	url = ./wifi-isp-test
