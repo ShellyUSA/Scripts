@@ -1,6 +1,7 @@
-// copy and paste this code into the BLE_Gateway device
-// the array is the target device where its own script will run
-// action1/2/3/4 are the corresponding scripts in the target
+// create a new script in the BLE_Gateway device. Make sure it is the first one in the list
+// copy and paste this code
+// the array is the list of devices where either has its own script or that will be affected by this script
+// outsideAction1/2/3/4 are the corresponding commands that will be executed on the device in the list
 
 // Example: 
 // When press button 1x the code will call action1 and run the script 1 in each device in the array
@@ -13,31 +14,50 @@
 // Timer.clear(timer_handle);
 // timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
 
+// INSTRUCTIONS TO MODIFY THE SCRIPT
+
+// to run scripts that are in another device: In the CONFIG section, DEACTIVATE the action by COMMENTING the line "action: executeInsideScript"
+
+// to run scripts that are in the BLE_Gateway device: In the CONFIG section, DEACTIVATE the action by COMMENTING the line "action: executeOutsideAction" and the variables bellow
+
+// comment/uncomment these if you want to run scripts on devices
+// let action1 = "/rpc/Script.Start?id=1";
+// let action2 = "/rpc/Script.Start?id=2";
+// let action3 = "/rpc/Script.Start?id=3";
+// let action4 = "/rpc/Script.Start?id=4";
+
+// OR
+
+// comment/uncomment these if you want to toggle and set brightness on lights
+// let action1 = "/settings/light/0?turn=toggle";
+// let action2 = "/settings/light/0?brightness=15";
+// let action3 = "/settings/light/0?brightness=45";
+// let action4 = "/settings/light/0?brightness=75";
+
+// OR
+
+// comment/uncomment these if you want to toggle GEN2  devices
 
 
+// Insert in the list all your devices IP addresses
 
-let array = ["192.168.20.184","192.168.20.9","192.168.20.140","192.168.20.89","192.168.20.114","192.168.20.55","192.168.20.27","192.168.20.200","192.168.20.25","192.168.20.208","192.168.20.194","192.168.20.242","192.168.20.21","192.168.20.37","192.168.20.68","192.168.20.81","192.168.20.120","192.168.20.218","192.168.20.193","192.168.20.135","192.168.20.141","192.168.20.143","192.168.20.197","192.168.20.220","192.168.20.131","192.168.20.164","192.168.20.138","192.168.20.29","192.168.20.88","192.168.20.132","192.168.20.136","192.168.20.201","192.168.20.24","192.168.20.26","192.168.20.57","192.168.20.102","192.168.20.152","192.168.20.28","192.168.20.23","192.168.20.186","192.168.20.63","192.168.20.137","192.168.20.145","192.168.20.167","192.168.20.245","192.168.20.133","192.168.20.8","192.168.20.44"];
-
-// to run scripts that are in another device: In the CONFIG section, comment the line action: executeInsideAction 
-
-// to run scripts that are in the same device: In the CONFIG section, comment the line action: executeOutsideAction and the variables bellow
-
-let outsideAction1 = "/rpc/Script.Start?id=1";
-let outsideAction2 = "/rpc/Script.Start?id=2";
-let outsideAction3 = "/rpc/Script.Start?id=3";
-let outsideAction4 = "/rpc/Script.Start?id=4";
-
-
+let array = ["192.168.0.140","192.168.0.165","192.168.0.182"];
 
 let timer_handle = null;
 let index = 0;
 Timer.clear(timer_handle);
 
-function executeOutsideAction(action){
+let action1 = "/rpc/Switch.Set?id=0&on=true";
+let action2 = "/rpc/Switch.Set?id=0&on=false";
+let action3 = "/rpc/Switch.Toggle?id=0";
+let action4 = "/rpc/Shelly.Reboot";
+
+function executeOutsideAction1(){
+  let outsideAction1 = action1;
   print("Calling ip: "+array[index]);
   Shelly.call(
     "HTTP.GET", 
-    { url: "http://" + array[index] + action }, 
+    { url: "http://" + array[index] + outsideAction1 }, 
     function (res, error_code, error_msg, self){
       print(index,array.length);
       if(error_code !== 0){
@@ -47,11 +67,11 @@ function executeOutsideAction(action){
       } else {
         print('Command executed for ip: '+array[index]);
       }
-      if (index < array.length) {
+      if (index < array.length - 1) {
         index++;
-        turnOn();   // recursive call
+        executeOutsideAction1();   // recursive call
       } else {
-        print("Auto-stop script in 5 seconds");
+        print("Auto-stop this script 5 seconds after end of all calls");
         timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
         print('End of script');      
       }
@@ -60,11 +80,98 @@ function executeOutsideAction(action){
   );
 }
 
-function executeInsideAction(action){
+function executeOutsideAction2(){
+  let outsideAction2 = action2;
   print("Calling ip: "+array[index]);
   Shelly.call(
-    ("Script.Start",{"id":action})
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction2 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction2();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
   );
+}
+
+function executeOutsideAction3(){
+  let outsideAction3 = action3;
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction3 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction3();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
+}
+
+function executeOutsideAction4(){
+  let outsideAction4 = action4;    
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction4 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction4();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
+}
+
+// This function will call a script inside the device. The script has all the code necessary. We are just calling the script on button press
+function executeInsideScript(id){
+  Shelly.call(
+    "Script.Start",{"id":id}
+  );
+  print("Auto-stop this script 5 seconds after end call");
+  timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+  print('End of script');  
 }
 
 
@@ -77,32 +184,32 @@ let CONFIG = {
                 // addr: shelly_blu_address,
                 Button: 1,
             },
-            action: executeOutsideAction(outsideAction1),
-            action: executeInsideAction(1),
+            action: executeOutsideAction1(),
+            action: executeInsideScript(2),
         },
         {
             cond: {
             // addr: shelly_blu_address,
             Button: 2,
             },
-            action: executeOutsideAction(outsideAction2),
-            action: executeInsideAction(2),
+            action: executeOutsideAction2(),
+            action: executeInsideScript(3),
         },
         {
             cond: {
             // addr: shelly_blu_address,
             Button: 3,
             },
-            action: executeOutsideAction(outsideAction3),
-            action: executeInsideAction(3),
+            action: executeOutsideAction3(),
+            action: executeInsideScript(4),
         },
         {
             cond: {
             // addr: shelly_blu_address,
             Button: 4,
             },
-            action: executeOutsideAction(outsideAction4),
-            action: executeInsideAction(4),
+            action: executeOutsideAction4(),
+            action: executeInsideScript(5),
         },    
     ],
 };
