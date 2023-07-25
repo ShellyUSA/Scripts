@@ -22,7 +22,7 @@ let index = 0;
 Timer.clear(timer_handle);
 
 
-function turnOn(){
+function executeAction(){
   print("Calling ip: "+array[index]);
   Shelly.call(
     "HTTP.GET", 
@@ -38,7 +38,7 @@ function turnOn(){
       }
       if (index < array.length) {
         index++;
-        turnOn();   // recursive call
+        executeAction();   // recursive call
       } else {
         print("Auto-stop script in 5 seconds");
         timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
@@ -49,4 +49,4 @@ function turnOn(){
   );
 }
 
-turnOn();
+executeAction();
