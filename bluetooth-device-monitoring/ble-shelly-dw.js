@@ -33,22 +33,31 @@
 // Value: 0
 
 // Device name can be obtained if an active scan is performed
-// You can rely only on the addresss filtering and forego device name matching
+// You can rely only on the address filtering and forego device name matching
 
 // CHANGE HERE
-function triggerAutomation() {
-    print("Window is opened, will toggle the output");
-    Shelly.call("Switch.Set", { id: 0, on: true });
-  }
-  
-  function printClosed() {
-    print("Window is opened, will toggle the output");
-    Shelly.call("Switch.Set", { id: 0, on: false });
-  }
   
   // remove name prefix to not filter by device name
   // remove address to not filter by address
   
+  function triggerAutomation() {
+    print("Window is opened, will toggle the output");
+    // Shelly.call("Switch.Set", { id: 0, on: true });
+    Shelly.call(
+      "http.get",
+      { "url": 'http://' + CONFIG.deviceIP + CONFIG.rpcCommand },
+      function (response, error_code, error_message, ud) {
+          print(response);
+      },
+      null
+  );
+  }
+  
+  function printClosed() {
+    print("Window is closed, will toggle the output");
+    // Shelly.call("Switch.Set", { id: 0, on: false });
+  }
+
   let CONFIG = {
     //shelly_blu_name_prefix: 'SBDW',
     //"BIND" to only this address
@@ -56,18 +65,22 @@ function triggerAutomation() {
     actions: [
       {
         cond: {
-          Window: 0,
+          Window: 1,
         },
         action: triggerAutomation,
       },
       {
         cond: {
-          Window: 1,
+          Window: 0,
         },
         action: printClosed,
       },
     ],
+    deviceIP: "192.168.1.182",
+    rpcCommand: "/rpc/Shelly.GetStatus",
   };
+
+
   // END OF CHANGE
   
   let ALLTERCO_MFD_ID_STR = "0ba9";
@@ -159,7 +172,7 @@ function triggerAutomation() {
       while (buffer.length > 0) {
         _bth = BTH[buffer.at(0)];
         if (_bth === "undefined") {
-          console.log("BTH: unknown type");
+          // console.log("BTH: unknown type");
           break;
         }
         buffer = buffer.slice(1);
@@ -207,13 +220,13 @@ function triggerAutomation() {
     let BTHparsed = ShellyBLUParser.getData(res);
     // skip if parsing failed
     if (BTHparsed === null) {
-      console.log("Failed to parse BTH data");
+      // console.log("Failed to parse BTH data");
       return;
     }
     // skip, we are deduping results
     if (last_packet_id === BTHparsed.pid) return;
     last_packet_id = BTHparsed.pid;
-    console.log("Shelly BTH packet: ", JSON.stringify(BTHparsed));
+    // console.log("Shelly BTH packet: ", JSON.stringify(BTHparsed));
     // execute actions from CONFIG
     let aIdx = null;
     for (aIdx in CONFIG.actions) {
