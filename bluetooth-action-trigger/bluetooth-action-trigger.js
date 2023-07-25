@@ -1,43 +1,138 @@
-let arr = ["192.168.15.232","192.168.15.204","192.168.15.206"];
 
-//turn lamp on
-function turnOn(){
-    for(let i=0; i < arr.length; i++){
-        print(arr[i]);
-        Shelly.call(
-          "HTTP.GET", 
-          { url: "http://"+arr[i]+"/rpc/Switch.Set?id=0&on=true" }, 
-          function (res, error_code, error_msg, ud){
-            if(error_code !== 0){
-              print(arr[i]);
-              print(JSON.stringify(res));
-              print(JSON.stringify(error_code));
-              print(JSON.stringify(error_msg));
-            }
-          }, 
-          null
-        );
-    }
+
+// Insert in the list all your devices IP addresses
+
+let array = ["192.168.0.140","192.168.0.165","192.168.0.182"];
+
+let timer_handle = null;
+let index = 0;
+Timer.clear(timer_handle);
+
+let action1 = "/rpc/Switch.Set?id=0&on=true";
+let action2 = "/rpc/Switch.Set?id=0&on=false";
+let action3 = "/rpc/Switch.Toggle?id=0";
+let action4 = "/rpc/Shelly.Reboot";
+
+function executeOutsideAction1(){
+  let outsideAction1 = action1;
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction1 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction1();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
 }
 
-//turn lamp off
-function turnOff(){
-    for(let i=0; i < arr.length; i++){
-        print(arr[i]);
-        Shelly.call(
-          "HTTP.GET", 
-          { url: "http://"+arr[i]+"/rpc/Switch.Set?id=0&on=false" }, 
-          function (res, error_code, error_msg, ud){
-            if(error_code !== 0){
-              print(arr[i]);
-              print(JSON.stringify(res));
-              print(JSON.stringify(error_code));
-              print(JSON.stringify(error_msg));
-            }
-          }, 
-          null
-        );
-    }
+function executeOutsideAction2(){
+  let outsideAction2 = action2;
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction2 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction2();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
+}
+
+function executeOutsideAction3(){
+  let outsideAction3 = action3;
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction3 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction3();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
+}
+
+function executeOutsideAction4(){
+  let outsideAction4 = action4;    
+  print("Calling ip: "+array[index]);
+  Shelly.call(
+    "HTTP.GET", 
+    { url: "http://" + array[index] + outsideAction4 }, 
+    function (res, error_code, error_msg, self){
+      print(index,array.length);
+      if(error_code !== 0){
+        print(JSON.stringify(res));
+        print(JSON.stringify(error_code));
+        print(JSON.stringify(error_msg));
+      } else {
+        print('Command executed for ip: '+array[index]);
+      }
+      if (index < array.length - 1) {
+        index++;
+        executeOutsideAction4();   // recursive call
+      } else {
+        print("Auto-stop this script 5 seconds after end of all calls");
+        timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+        print('End of script');      
+      }
+    }, 
+    this
+  );
+}
+
+// This function will call a script inside the device. The script has all the code necessary. We are just calling the script on button press
+function executeInsideScript(id){
+  Shelly.call(
+    "Script.Start",{"id":id}
+  );
+  print("Auto-stop this script 5 seconds after end call");
+  timer_handle = Timer.set(5000,false,function stopScript(){Shelly.call("Script.Stop",{"id":1})},null);
+  print('End of script');  
 }
 
 
@@ -50,17 +145,36 @@ let CONFIG = {
                 // addr: shelly_blu_address,
                 Button: 1,
             },
-            action: turnOn,
+            action: executeOutsideAction1(),
+            action: executeInsideScript(2),
         },
         {
             cond: {
             // addr: shelly_blu_address,
             Button: 2,
             },
-            action: turnOff,
+            action: executeOutsideAction2(),
+            action: executeInsideScript(3),
+        },
+        {
+            cond: {
+            // addr: shelly_blu_address,
+            Button: 3,
+            },
+            action: executeOutsideAction3(),
+            action: executeInsideScript(4),
+        },
+        {
+            cond: {
+            // addr: shelly_blu_address,
+            Button: 4,
+            },
+            action: executeOutsideAction4(),
+            action: executeInsideScript(5),
         },    
     ],
 };
+
 // END OF CHANGE
   
   let ALLTERCO_MFD_ID_STR = "0ba9";
