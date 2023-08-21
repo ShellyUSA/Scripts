@@ -8,6 +8,7 @@ let COMMAND_LIST = {
     "1":'/rpc/Switch.Set?id=0&on=true',
     "2":'/rpc/Switch.Set?id=0&on=false',
     "3":'/rpc/Switch.Toggle?id=0',
+    "4":'/rpc/Script.Start?id=1',
 }
 
 function shellyCall(URI){
@@ -43,25 +44,25 @@ function buttonAction(actionId) {
             cond: {
                 Button: 1,
             },
-            action: buttonAction(1), // 1 short press
+            action: buttonAction(1), // 1 short press will trigger command #1 in the list of commands
         },
         {
             cond: {
                 Button: 2,
             },
-            action: buttonAction(2), // 1 short press
+            action: buttonAction(2), // 2 short press will trigger command #2 in the list of commands
         },
         {
             cond: {
                 Button: 3,
             },
-            action: buttonAction(3), // 1 short press
+            action: buttonAction(3), // 3 short press will trigger command #3 in the list of commands
         },
         {
             cond: {
                 Button: 4,
             },
-            action: buttonAction(4), // 1 short press
+            action: buttonAction(4), // 4 short press will trigger command #4 in the list of commands
         },  
     ],
   };
