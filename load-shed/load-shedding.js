@@ -1,4 +1,4 @@
-// load-shed script will keep measured usage between a low (min_before_re_adding) and high
+// load-shedding script will keep measured usage between a low (min_before_re_adding) and high
 // (max_before_shedding) total power (watts), by controlling power to other devices
 
 /************************   settings  ************************/
