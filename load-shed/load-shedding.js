@@ -3,12 +3,27 @@
 
 /************************   settings  ************************/
 
-let first_to_last_to_shed = [ { "addr":"192.168.1.100","gen":3, "type":"Switch", "id":100 },
+// Key considerations:
+
+// 1. Make sure the value set for max_before_shedding is greater than the value set for min_before_re_adding (10% should be considered the lowest spread, 20% is a better minimum spread)
+// 2. The greater the distance between min and max, the less "churn" you'll have. Setting ample space between these values will make your load shedding more efficient.
+// 3. The lowest value for poll_time should be 60 - during "turn on" cycles, you should allow enough time for inrush spikes to settle.
+// 4. You are not limited to 5 devices. You can use fewer or more devices, 5 is just the number of examples here. Please note that the higher numbered entries (4 and 5 here) would be considered the most important circuits - last turned off, first turned on.
+
+// The examples below are:
+// 192.168.1.100 - a Shelly Pro 3EM
+// 192.168.52.4 - a first generation Shelly relay
+// "http://192.168.1.101/rpc/switch.Set?id=0&on=true" - an example of a webhook (labelled "on_url") that triggers when the script turns on devices when low power threshold is reached
+// "http://192.168.1.101/rpc/switch.Set?id=0&on=false" - an example of a webhook (labelled "off_url") that triggers when the script turns on devices when max power threshold is reached
+// 192.168.52.3 - a Shelly Plus or Pro relay (single channel or first channel)
+// 192.168.52.2 - a Shelly Plus or Pro relay (second channel)
+
+let first_to_last_to_shed = [ { "addr":"192.168.1.100","gen":2, "type":"Switch", "id":100 },
                               { "addr":"192.168.52.4","gen":1,"type":"relay","id":0 },
                               { "on_url":"http://192.168.1.101/rpc/switch.Set?id=0&on=true",
                                 "off_url":"http://192.168.1.101/rpc/switch.Set?id=0&on=false" },
                               { "addr":"192.168.52.3","gen":2,"type":"relay","id":0 },
-                              { "addr":"192.168.52.2","gen":2,"type":"relay","id":0 },
+                              { "addr":"192.168.52.2","gen":2,"type":"relay","id":1 },
                             ];
 
 let max_before_shedding = 1200;
