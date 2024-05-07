@@ -40,8 +40,8 @@ let Pro3EM_channels = [ 'a', 'b', 'c' ];
 
 let logging = false;
 let simulation_power = 0;        // set this to manually test in console
-let simulation_hhmm = "00:00";   // leave "" for normal operation, set to time like "03:00" to test
-let simulation_day = 1;          // -1 for normal operation, to test, 0=Sunday, 1=Monday...
+let simulation_hhmm = "";        // leave "" for normal operation, set to time like "03:00" to test
+let simulation_day = -1;         // -1 for normal operation, to test, 0=Sunday, 1=Monday...
 
 let devices = [ { "name":"Water heater", "descr": "Shelly Pro 3EM", "addr":"192.168.1.105","gen":2, "type":"Switch", "id":100, "notify" : true },
 				{ "name":"EV charger", "descr": "Shelly Pro 3EM", "addr":"192.168.1.106","gen":2, "type":"Switch", "id":100, "notify" : true },
@@ -135,7 +135,7 @@ function turn( device, dir, notify, wattage ) {
     on = dir == "on" ? "true" : "false";
     if ( simulation_hhmm || simulation_power || simulation_day > -1 ) {
         print( "Would turn " + device.name + " " + dir );
-        // return;
+        return;
     }
     if ( def( device.notify ) && device.notify ) {
         cmd = "";
@@ -147,6 +147,7 @@ function turn( device, dir, notify, wattage ) {
             cmd.replace( "{device}", device.name );
             cmd.replace( "{state}", dir );
             cmd.replace( "{wattage}", wattage );
+            Shelly.call( "HTTP.GET", { url: cmd }, callback );
         }
     }
 
