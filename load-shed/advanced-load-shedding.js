@@ -23,11 +23,11 @@
 //          ]
 // schedules = [
 //               { "name":,"enable":,"start":,"days":,                     # enable is optional, defaults to true, days optional, defaults to SMTWTF
-//                 "descr":"",
+//                 "descr":,  
 //                 "priority":[],                                          # prioritized device list. first is kept on most, last in list is first to shed
 //                 "on":[],                                                # devices to keep on. may contain the single entry "ALL", or a list of devices
 //                 "off":[],                                               # devices to keep off. a schedule must have at least one of priority, on, off       
-//                 "min":,"max":,"poll_time":,short_poll:,                 # if priority is specified, all of these options are required
+//                 "min":,"max":,"poll_time":,"short_poll":,               # if priority is specified, all of these options are required
 //                 "notify_on":,"notify_off"                               # notifications are optional
 //               },
 //               ...
@@ -74,7 +74,7 @@ let schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "da
                     "descr":"Weekdays, starting 7AM, when solar production ramps up",
                     "priority":["HVAC","Oven","Microwave","Entertainment Center","Water heater","EV charger","Dishwasher","Ceiling fan","Pool Pump"],
                     "min":2500, "max":3500, "poll_time":300, short_poll:10 },
-                 { "name":"Evening Time of Use/Peak Demand", "enable": true, "start":"17:00", "days":".MTWTF.",
+                 { "name":"Evening Time of Use-Peak Demand", "enable": true, "start":"17:00", "days":".MTWTF.",
                     "descr":"Weekdays, starting 5PM, returning to grid, time of use/peak demand rates apply with penalty",
                     "priority":["HVAC","Ceiling fan","Entertainment Center","Microwave","Dishwasher"],
                     "off" : ["Pool Pump"],
@@ -133,10 +133,8 @@ function turn( device, dir, notify, wattage ) {
         verifying = false;
     device.presumed_state = dir;
     on = dir == "on" ? "true" : "false";
-    if ( simulation_hhmm || simulation_power || simulation_day > -1 ) {
-        print( "Would turn " + device.name + " " + dir );
-        return;
-    }
+    print( "Turn " + device.name + " " + dir );
+    if ( simulation_hhmm || simulation_power || simulation_day > -1 ) return;
     if ( def( device.notify ) && device.notify ) {
         cmd = "";
         if ( dir == "on" && notify_on != "" )
