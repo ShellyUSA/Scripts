@@ -22,7 +22,7 @@
 //            ...                                                          # occurences of {device}, {state}, and {wattage} will be replaced inline
 //          ]
 // schedules = [
-//               { "name":,"enable":,"start":,"days":,                     # enable is optional, defaults to true, days optional, defaults to SMTWTF
+//               { "name":,"enable":,"start":,"days":,                     # enable is optional, defaults to true, days optional, defaults to SMTWTFS
 //                 "descr":,  
 //                 "priority":[],                                          # prioritized device list. first is kept on most, last in list is first to shed
 //                 "on":[],                                                # devices to keep on. may contain the single entry "ALL", or a list of devices
@@ -97,7 +97,7 @@ let direction = "coasting"
 let power_states = [ ]
 let channel_power = { };
 let verifying = false;
-let days = "SMTWTF";
+let days = "SMTWTFS";
 let last_schedule = -1;
 let schedule = -1;
 let device_map = {};
@@ -186,7 +186,7 @@ function find_active_schedule( ) {
         day = simulation_day;
     else
         day = now.getDay();
-    if ( simulation_hhmm != -1 )
+    if ( simulation_hhmm != "" )
         hhmm = simulation_hhmm;
     else
         hhmm = pad0(hour,2) + ':' + pad0(minute,2);
@@ -198,6 +198,7 @@ function find_active_schedule( ) {
             last_sched = n;
         }
         if ( ! def( s.days ) || s.days[ day ] == days[ day ] ) {
+            # print( hhmm + " " + s.start + " " + sched_time );
             if ( hhmm >= s.start && s.start >= sched_time && s.start > sched_time ) {
                 sched_time = s.start;
                 sched = n;
@@ -212,6 +213,10 @@ function toggle_all( dir, notify, wattage ) {
     for ( d in devices ) {
         qturn( devices[ d ], dir, notify, wattage );
     }
+}
+
+function process_kvs( result, error_code, error_message ) {
+    print( JSON.stringify( result ) );
 }
 
 function check_power( msg ) {
@@ -258,6 +263,7 @@ function check_power( msg ) {
 
         if ( def( msg.delta ) || schedule != last_schedule ) {
             if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
+                Shelly.call("KVS.List", {match:"*"}, function (result, error_code, error_message) { print( result ); } )
                 last_cycle_time = Date.now() / 1000;
                 if ( direction === "loading" ) {
                     qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, total );
