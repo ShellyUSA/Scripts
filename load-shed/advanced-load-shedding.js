@@ -198,7 +198,7 @@ function find_active_schedule( ) {
             last_sched = n;
         }
         if ( ! def( s.days ) || s.days[ day ] == days[ day ] ) {
-            # print( hhmm + " " + s.start + " " + sched_time );
+            // print( hhmm + " " + s.start + " " + sched_time );
             if ( hhmm >= s.start && s.start >= sched_time && s.start > sched_time ) {
                 sched_time = s.start;
                 sched = n;
