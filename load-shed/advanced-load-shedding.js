@@ -1,7 +1,7 @@
 // load-shedding script will keep measured usage between a low (min) and high
 // (max) total power (watts), by controlling power to other devices
 
-// Shelly.call("KVS.set",{key:"load-shed-setting", value:JSON.stringify({settings:[{schedule:"All Nights Grid",key:"start",value:"21:11"}]})})
+// Shelly.call("KVS.set",{ key:"load-shed-setting", value: { settings:[ {schedule:"All Nights Grid", kvs:[ {key:"start",value:"21:11"} ] } ] } } )
 
 // Key considerations:
 
@@ -242,11 +242,14 @@ function process_kv( result, error_code, error_message ) {
                  setting = result.value.settings[ s ];
                  // print( "THERE: [ " + JSON.stringify( setting ) + " ]");
                  if ( def( setting.schedule ) &&
-                      def( setting.key ) &&
-                      def( setting.value ) &&
-                      setting.schedule in schedule_map 
-                      ) 
-                      schedules[ schedule_map[ setting.schedule ] ][ setting.key ] = setting.value;
+                      def( setting.kvs ) &&
+                      setting.schedule in schedule_map  )
+                     for ( k in setting.kvs ) {
+                         kv = setting.kvs[ k ];
+                         if ( def( kv.key ) &&
+                              def( kv.value )
+                         ) schedules[ schedule_map[ setting.schedule ] ][ kv.key ] = kv.value;
+                     }
             }
         }
     }
