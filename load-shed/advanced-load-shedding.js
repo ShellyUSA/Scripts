@@ -38,29 +38,33 @@
 let Pro4PM_channels = [ 0, 1, 2, 3 ];      // default to sum of all channels for 4PM 
 let Pro3EM_channels = [ 'a', 'b', 'c' ];   // similar if device is 3EM
 
+let max_ = 1200;                 // global max, used only if never defined in schedules
+let min_ = 900;
+let poll_time = 300;             // unless overriden in a schedule, defines time between shedding or adding load
+let short_poll = 10;             // faster cycle time when verifying that an "on" device is still on
 let logging = false;
 let simulation_power = 0;        // set this to manually test in console
 let simulation_hhmm = "";        // leave "" for normal operation, set to time like "03:00" to test
 let simulation_day = -1;         // -1 for normal operation, to test, 0=Sunday, 1=Monday...
 
 let devices = [ { "name":"Water heater", "descr": "Shelly Pro 3EM", "addr":"192.168.1.105","gen":2, "type":"Switch", "id":100, "notify" : true },
-				{ "name":"EV charger", "descr": "Shelly Pro 3EM", "addr":"192.168.1.106","gen":2, "type":"Switch", "id":100, "notify" : true },
-				{ "name":"Pool Pump", "descr": "Shelly Pro 3EM", "addr":"192.168.1.107","gen":2, "type":"Switch", "id":100, "notify" : false },
-				{ "name":"Oven", "descr": "Shelly Pro 3EM", "addr":"192.168.1.108","gen":2, "type":"Switch", "id":100, "notify" : true },
-				{ "name":"Air Conditioner", "descr": "Shelly Pro 3EM", "addr":"192.168.1.109","gen":2, "type":"Switch", "id":100, "notify" : false },
+                { "name":"EV charger", "descr": "Shelly Pro 3EM", "addr":"192.168.1.106","gen":2, "type":"Switch", "id":100, "notify" : true },
+                { "name":"Pool Pump", "descr": "Shelly Pro 3EM", "addr":"192.168.1.107","gen":2, "type":"Switch", "id":100, "notify" : false },
+                { "name":"Oven", "descr": "Shelly Pro 3EM", "addr":"192.168.1.108","gen":2, "type":"Switch", "id":100, "notify" : true },
+                { "name":"Air Conditioner", "descr": "Shelly Pro 3EM", "addr":"192.168.1.109","gen":2, "type":"Switch", "id":100, "notify" : false },
                 { "name":"Ceiling fan",  "descr": "Shelly 1PM", "addr":"192.168.1.110","gen":1, "type":"relay", "id":0, "notify" : false },
                 { "name":"Hot Tub", "descr": "NodeRed endpoint to control non-shelly devices", 
-                                         "on_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
-                                         "off_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
-                                         "notify" : false },
+                         "on_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
+                         "off_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
+                         "notify" : false },
                 { "name":"Entertainment Center",  "descr": "Shelly Plus 2PM relay single channel",
-                   "addr":"192.168.1.114","gen":2,"type":"relay","id":0, "notify" : true },
+                         "addr":"192.168.1.114","gen":2,"type":"relay","id":0, "notify" : true },
                 { "name":"HVAC",  "descr": "Shelly Plus 1PM with contactor",
-                   "addr":"192.168.1.111","gen":2,"type":"relay","id":0, "notify" : true },
+                         "addr":"192.168.1.111","gen":2,"type":"relay","id":0, "notify" : true },
                 { "name":"Dishwasher",  "descr": "Shelly Plus 2PM relay first channel",
-                   "addr":"192.168.1.112","gen":2,"type":"relay","id":0, "notify" : true },
+                         "addr":"192.168.1.112","gen":2,"type":"relay","id":0, "notify" : true },
                 { "name":"Microwave", "descr": "Shelly Plus 2PM relay second channel",
-                  "addr":"192.168.1.112","gen":2,"type":"relay","id":1, "notify" : true },
+                         "addr":"192.168.1.112","gen":2,"type":"relay","id":1, "notify" : true },
               ]
 
 let notify = [
@@ -101,13 +105,10 @@ let days = "SMTWTFS";
 let last_schedule = -1;
 let schedule = -1;
 let device_map = {};
-let max_ = 1200;
-let min_ = 900;
-let poll_time = 300;
-let short_poll = 10;
 let priority = [];
 let notify = ""
 let queue = []
+let in_flight = 0;
 
 function total_power( ) {
     if ( simulation_power ) return simulation_power;
@@ -118,6 +119,7 @@ function total_power( ) {
 }
 
 function callback( result, error_code, error_message ) {
+    in_flight--;
     if ( error_code != 0 ) {
         print( "fail" );
         // TBD: currently we don't have any retry logic
@@ -146,6 +148,7 @@ function turn( device, dir, notify, wattage ) {
             cmd.replace( "{state}", dir );
             cmd.replace( "{wattage}", wattage );
             Shelly.call( "HTTP.GET", { url: cmd }, callback );
+            in_flight++;
         }
     }
 
@@ -155,11 +158,16 @@ function turn( device, dir, notify, wattage ) {
         else
             let cmd = "rpc/"+device.type+".Set?id="+device.id.toString()+"&on="+on
         Shelly.call( "HTTP.GET", { url: "http://"+device.addr+"/"+cmd }, callback );
+        in_flight++;
     }
-    if ( def( device.on_url ) && dir == "on" )
+    if ( def( device.on_url ) && dir == "on" ) {
         Shelly.call( "HTTP.GET", { url: device.on_url }, callback );
-    if ( def( device.off_url ) && dir == "off" )
+        in_flight++;
+    }
+    if ( def( device.off_url ) && dir == "off" ) {
         Shelly.call( "HTTP.GET", { url: device.off_url }, callback );
+        in_flight++;
+    }
 }
 
 function qturn( device, dir, notify, wattage ) {
@@ -242,13 +250,17 @@ function check_power( msg ) {
         idx_next_to_toggle = 0;
         notify_on = "";
         notify_off = "";
+        if ( def( s.min ) ) min_ = s.min;
+        if ( def( s.max ) ) max_ = s.max;
+        if ( def( s.poll_time ) ) poll_time = s.poll_time;
+        if ( def( s.short_poll ) ) short_poll = s.short_poll;
         if ( def( s.notify_on ) ) notify_on = s.notify_on;
         if ( def( s.notify_off ) ) notify_off = s.notify_off;
         if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, total ) else qturn( s.off[d], "off", notify, total );
         if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, total ) else qturn( s.on[d], "on", notify, total );
     } 
     if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
-        Shelly.call( "KVS.List", {match:"*"}, process_kvs )
+        Shelly.call( "KVS.List", {match:"load-shed/**"}, process_kvs )
         last_cycle_time = Date.now() / 1000;
         poll_now = true;
     }
@@ -281,7 +293,7 @@ function check_power( msg ) {
         }
     }
     last_schedule = schedule;
-    if ( queue.length > 0 ) {
+    if ( queue.length > 0 && in_flight < 2 ) {
         t = queue[0];
         queue = queue.slice(1);
         turn( t.device, t.dir, t.notify, t.wattage );
