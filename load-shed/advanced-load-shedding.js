@@ -8,10 +8,10 @@
 // 3. The lowest value for poll_time should be 60 - during "turn on" cycles, you should allow enough time for inrush spikes to settle.
 // 4. Priority is in order of most important (keep on if possible) to least important.
 // 5. Any device that isn't listed at all, or is left out from all schedules will be unmanaged--never subject to load shedding.
-// 6. Best practice is to name all of the included devices in each schedule, in one of the sets "priority," "on," or "off".A
+// 6. Best practice is to name all of the included devices in each schedule, in one of the sets "priority," "on," or "off".
 
 // poll_time: minimum time span between applying normal on/off steps
-// shor_poll: span after toggling on a device presumed to already be on 
+// short_poll: when adding devices, highest priority devices are turned on, even if they are presumed to already be on, this shorter time speeds the process
 
 // JSON schema for input settings:
 // devices = [ { "name":,"descr":,"addr":,"gen":,"type":,"id":,"notify":}, # shelly device. descr and notify are optional, notify defaults to false
@@ -35,8 +35,8 @@
 
 /************************   settings  ************************/
 
-let Pro4PM_channels = [ 0, 1, 2, 3 ];   // default to sum of all channels for either 4PM or 3EM
-let Pro3EM_channels = [ 'a', 'b', 'c' ];
+let Pro4PM_channels = [ 0, 1, 2, 3 ];      // default to sum of all channels for 4PM 
+let Pro3EM_channels = [ 'a', 'b', 'c' ];   // similar if device is 3EM
 
 let logging = false;
 let simulation_power = 0;        // set this to manually test in console
@@ -220,6 +220,7 @@ function process_kvs( result, error_code, error_message ) {
 }
 
 function check_power( msg ) {
+    poll_now = false;
     if ( def( msg.delta ) ) {
         if ( def( msg.delta.apower ) && msg.id in Pro4PM_channels )
             channel_power[ msg.id ] = msg.delta.apower;
@@ -246,6 +247,11 @@ function check_power( msg ) {
         if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, total ) else qturn( s.off[d], "off", notify, total );
         if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, total ) else qturn( s.on[d], "on", notify, total );
     } 
+    if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
+        Shelly.call( "KVS.List", {match:"*"}, process_kvs )
+        last_cycle_time = Date.now() / 1000;
+        poll_now = true;
+    }
     if ( priority.length ) {
         if ( total > max_ ) {
             if ( direction !== "shedding" ) {
@@ -262,9 +268,7 @@ function check_power( msg ) {
         }
 
         if ( def( msg.delta ) || schedule != last_schedule ) {
-            if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
-                Shelly.call("KVS.List", {match:"*"}, function (result, error_code, error_message) { print( result ); } )
-                last_cycle_time = Date.now() / 1000;
+            if ( poll_now ) {
                 if ( direction === "loading" ) {
                     qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, total );
                     if ( idx_next_to_toggle < priority.length -1 ) idx_next_to_toggle += 1;
