@@ -1,6 +1,8 @@
 // load-shedding script will keep measured usage between a low (min) and high
 // (max) total power (watts), by controlling power to other devices
 
+// Shelly.call("KVS.set",{key:"load-shed-setting", value:JSON.stringify({settings:[{schedule:"All Nights Grid",key:"start",value:"21:11"}]})})
+
 // Key considerations:
 
 // 1. Make sure the value set for max is greater than the value set for min (10% should be considered the lowest spread, 20% is a better minimum spread)
@@ -103,6 +105,7 @@ let days = "SMTWTFS";
 let last_schedule = -1;
 let schedule = -1;
 let device_map = {};
+let schedule_map = {};
 let priority = [];
 let notify = ""
 let queue = []
@@ -233,8 +236,19 @@ function check_queue( ) {
 
 function process_kv( result, error_code, error_message ) {
     if ( last_kv != result.value ) {
-        print( result.value );
         last_kv = result.value;
+        if ( def( result.value.settings ) ) {
+            for ( s in result.value.settings ) {
+                 setting = result.value.settings[ s ];
+                 // print( "THERE: [ " + JSON.stringify( setting ) + " ]");
+                 if ( def( setting.schedule ) &&
+                      def( setting.key ) &&
+                      def( setting.value ) &&
+                      setting.schedule in schedule_map 
+                      ) 
+                      schedules[ schedule_map[ setting.schedule ] ][ setting.key ] = setting.value;
+            }
+        }
     }
 }
 
@@ -328,6 +342,7 @@ function init( ) {
         d.presumed_state = "unknown";
     }
     for ( sched in schedules ) {
+        schedule_map[ schedules[ sched ].name ] = sched;
         let s = schedules[sched];
         s.start = pad0( s.start, 5);
         if ( def(s.off) ) check_devices(s.off, "off", s );
