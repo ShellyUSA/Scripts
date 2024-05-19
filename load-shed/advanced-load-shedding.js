@@ -97,7 +97,6 @@ let schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "da
 let ts = 0;
 let idx_next_to_toggle = -1;
 let last_cycle_time = 0;
-let direction = "coasting"
 let channel_power = { };
 let verifying = false;
 let days = "SMTWTFS";
@@ -108,7 +107,8 @@ let priority = [];
 let notify = ""
 let queue = []
 let in_flight = 0;
-let kvs = { device_states : { }, power : 0, schedule : "none" }
+let kvs = { device_states : { }, power : 0, schedule : "none", direction : "coasting" };
+let last_kv = "";
 
 function total_power( ) {
     if ( simulation_power ) return simulation_power;
@@ -231,8 +231,11 @@ function check_queue( ) {
     }
 }
 
-function process_kvs( result, error_code, error_message ) {
-    print( JSON.stringify( result ) );
+function process_kv( result, error_code, error_message ) {
+    if ( last_kv != result.value ) {
+        print( result.value );
+        last_kv = result.value;
+    }
 }
 
 function check_power( msg ) {
@@ -256,7 +259,7 @@ function check_power( msg ) {
             priority = s.priority;
         else
             priority = [];
-        direction = "loading";
+        kvs.direction = "loading";
         idx_next_to_toggle = 0;
         notify_on = "";
         notify_off = "";
@@ -270,38 +273,39 @@ function check_power( msg ) {
         if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, kvs.power ) else qturn( s.on[d], "on", notify, kvs.power );
     } 
     if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
-        Shelly.call( "KVS.List", {match:"load-shed/**"}, process_kvs )
         last_cycle_time = Date.now() / 1000;
         poll_now = true;
     }
     if ( priority.length ) {
         if ( kvs.power > max_ ) {
-            if ( direction !== "shedding" ) {
-                direction = "shedding";
+            if ( kvs.direction !== "shedding" ) {
+                kvs.direction = "shedding";
                 idx_next_to_toggle = priority.length -1;
             }
         } else if ( kvs.power < min_ ) {
-            if ( direction !== "loading" ) {
-                direction = "loading";
+            if ( kvs.direction !== "loading" ) {
+                kvs.direction = "loading";
                 idx_next_to_toggle = 0;
             }
-        } else if ( direction !== "coasting" ) {
-            direction = "coasting";
+        } else if ( kvs.direction !== "coasting" ) {
+            kvs.direction = "coasting";
         }
 
         if ( def( msg.delta ) || schedule != last_schedule ) {
             if ( poll_now ) {
-                if ( direction === "loading" ) {
+                if ( kvs.direction === "loading" ) {
                     qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, kvs.power );
                     if ( idx_next_to_toggle < priority.length -1 ) idx_next_to_toggle += 1;
                 }
-                if ( direction === "shedding" ) {
+                if ( kvs.direction === "shedding" ) {
                     qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "off", notify, kvs.power );
                     if ( idx_next_to_toggle > 0 ) idx_next_to_toggle -= 1;
                 }
             }
         }
-    }
+    } else if ( poll_now )
+        Shelly.call( "KVS.get", {key:"load-shed-setting"}, process_kv )
+
     last_schedule = schedule;
     check_queue();
     if ( poll_now && kvs_status )
