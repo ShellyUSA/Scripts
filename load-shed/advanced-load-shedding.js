@@ -39,10 +39,11 @@ let Pro4PM_channels = [ 0, 1, 2, 3 ];      // default to sum of all channels for
 let Pro3EM_channels = [ 'a', 'b', 'c' ];   // similar if device is 3EM
 
 let max_ = 1200;                 // global max, used only if never defined in schedules
-let min_ = 900;
+let min_ = 900;                  //                    "                       "
 let poll_time = 300;             // unless overriden in a schedule, defines time between shedding or adding load
 let short_poll = 10;             // faster cycle time when verifying that an "on" device is still on
 let logging = false;
+let kvs_status = true;           // store status in key-value-store
 let simulation_power = 0;        // set this to manually test in console
 let simulation_hhmm = "";        // leave "" for normal operation, set to time like "03:00" to test
 let simulation_day = -1;         // -1 for normal operation, to test, 0=Sunday, 1=Monday...
@@ -67,8 +68,7 @@ let devices = [ { "name":"Water heater", "descr": "Shelly Pro 3EM", "addr":"192.
                          "addr":"192.168.1.112","gen":2,"type":"relay","id":1, "notify" : true },
               ]
 
-let notify = [
-                { "name": "notify off", "descr": "IFTTT webhook to fire when a device is disabled",
+let notify = [ { "name": "notify off", "descr": "IFTTT webhook to fire when a device is disabled",
                   "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=knobs" },
                 { "name": "notify on",
                   "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=sally" },
@@ -98,7 +98,6 @@ let ts = 0;
 let idx_next_to_toggle = -1;
 let last_cycle_time = 0;
 let direction = "coasting"
-let power_states = [ ]
 let channel_power = { };
 let verifying = false;
 let days = "SMTWTFS";
@@ -109,19 +108,20 @@ let priority = [];
 let notify = ""
 let queue = []
 let in_flight = 0;
+let kvs = { device_states : { }, power : 0, schedule : "none" }
 
 function total_power( ) {
     if ( simulation_power ) return simulation_power;
     let power = 0;
     for( k in channel_power )
-       power += channel_power[ k ];    
+       power += channel_power[ k ];
     return power;
 }
 
-function callback( result, error_code, error_message ) {
+function callback( result, error_code, error_message, user_data ) {
     in_flight--;
     if ( error_code != 0 ) {
-        print( "fail" );
+        print( "fail " + user_data );
         // TBD: currently we don't have any retry logic
     } else {
         if ( logging ) print( "success" );
@@ -133,6 +133,9 @@ function turn( device, dir, notify, wattage ) {
         verifying = true;
     else
         verifying = false;
+    if ( dir != device.presumed_state )
+        kvs.device_states[ device.name ] = dir;
+
     device.presumed_state = dir;
     on = dir == "on" ? "true" : "false";
     print( "Turn " + device.name + " " + dir );
@@ -147,7 +150,7 @@ function turn( device, dir, notify, wattage ) {
             cmd.replace( "{device}", device.name );
             cmd.replace( "{state}", dir );
             cmd.replace( "{wattage}", wattage );
-            Shelly.call( "HTTP.GET", { url: cmd }, callback );
+            Shelly.call( "HTTP.GET", { url: cmd }, callback, device.name );
             in_flight++;
         }
     }
@@ -157,15 +160,15 @@ function turn( device, dir, notify, wattage ) {
             let cmd = device.type+"/"+device.id.toString()+"?turn="+dir
         else
             let cmd = "rpc/"+device.type+".Set?id="+device.id.toString()+"&on="+on
-        Shelly.call( "HTTP.GET", { url: "http://"+device.addr+"/"+cmd }, callback );
+        Shelly.call( "HTTP.GET", { url: "http://"+device.addr+"/"+cmd }, callback, device.name );
         in_flight++;
     }
     if ( def( device.on_url ) && dir == "on" ) {
-        Shelly.call( "HTTP.GET", { url: device.on_url }, callback );
+        Shelly.call( "HTTP.GET", { url: device.on_url }, callback, device.name );
         in_flight++;
     }
     if ( def( device.off_url ) && dir == "off" ) {
-        Shelly.call( "HTTP.GET", { url: device.off_url }, callback );
+        Shelly.call( "HTTP.GET", { url: device.off_url }, callback, device.name );
         in_flight++;
     }
 }
@@ -190,14 +193,12 @@ function find_active_schedule( ) {
     let hour = now.getHours();
     let minute = now.getMinutes();
     let start_time = schedules[ 0 ].start;
+    let day = now.getDay();
+    let hhmm = pad0(hour,2) + ':' + pad0(minute,2);
     if ( simulation_day > -1 )
         day = simulation_day;
-    else
-        day = now.getDay();
     if ( simulation_hhmm != "" )
         hhmm = simulation_hhmm;
-    else
-        hhmm = pad0(hour,2) + ':' + pad0(minute,2);
     for ( n in schedules ) {
         s = schedules[ n ];
         if ( def( s.enable ) && ! s.enable ) continue;
@@ -206,7 +207,6 @@ function find_active_schedule( ) {
             last_sched = n;
         }
         if ( ! def( s.days ) || s.days[ day ] == days[ day ] ) {
-            // print( hhmm + " " + s.start + " " + sched_time );
             if ( hhmm >= s.start && s.start >= sched_time && s.start > sched_time ) {
                 sched_time = s.start;
                 sched = n;
@@ -223,11 +223,20 @@ function toggle_all( dir, notify, wattage ) {
     }
 }
 
+function check_queue( ) {
+    if ( queue.length > 0 && in_flight < 2 ) {
+        t = queue[0];
+        queue = queue.slice(1);
+        turn( t.device, t.dir, t.notify, t.wattage );
+    }
+}
+
 function process_kvs( result, error_code, error_message ) {
     print( JSON.stringify( result ) );
 }
 
 function check_power( msg ) {
+    check_queue();
     poll_now = false;
     if ( def( msg.delta ) ) {
         if ( def( msg.delta.apower ) && msg.id in Pro4PM_channels )
@@ -236,11 +245,12 @@ function check_power( msg ) {
             for ( k in Pro3EM_channels )
                 channel_power[ Pro3EM_channels[k] ] = msg.delta[ Pro3EM_channels[k] + '_act_power' ];
     }
-    let total = total_power( );
+    kvs.power = total_power( );
 
     schedule = find_active_schedule( ); 
     if ( schedule != last_schedule ) {
-        print( "activated " + schedules[ schedule ].name );
+        kvs.schedule = schedules[ schedule ].name;
+        print( "activated " + kvs.schedule );
         s = schedules[ schedule ]
         if ( def( s.priority ) )
             priority = s.priority;
@@ -256,8 +266,8 @@ function check_power( msg ) {
         if ( def( s.short_poll ) ) short_poll = s.short_poll;
         if ( def( s.notify_on ) ) notify_on = s.notify_on;
         if ( def( s.notify_off ) ) notify_off = s.notify_off;
-        if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, total ) else qturn( s.off[d], "off", notify, total );
-        if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, total ) else qturn( s.on[d], "on", notify, total );
+        if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, kvs.power ) else qturn( s.off[d], "off", notify, kvs.power );
+        if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, kvs.power ) else qturn( s.on[d], "on", notify, kvs.power );
     } 
     if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
         Shelly.call( "KVS.List", {match:"load-shed/**"}, process_kvs )
@@ -265,12 +275,12 @@ function check_power( msg ) {
         poll_now = true;
     }
     if ( priority.length ) {
-        if ( total > max_ ) {
+        if ( kvs.power > max_ ) {
             if ( direction !== "shedding" ) {
                 direction = "shedding";
                 idx_next_to_toggle = priority.length -1;
             }
-        } else if ( total < min_ ) {
+        } else if ( kvs.power < min_ ) {
             if ( direction !== "loading" ) {
                 direction = "loading";
                 idx_next_to_toggle = 0;
@@ -282,22 +292,20 @@ function check_power( msg ) {
         if ( def( msg.delta ) || schedule != last_schedule ) {
             if ( poll_now ) {
                 if ( direction === "loading" ) {
-                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, total );
+                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, kvs.power );
                     if ( idx_next_to_toggle < priority.length -1 ) idx_next_to_toggle += 1;
                 }
                 if ( direction === "shedding" ) {
-                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "off", notify, total );
+                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "off", notify, kvs.power );
                     if ( idx_next_to_toggle > 0 ) idx_next_to_toggle -= 1;
                 }
             }
         }
     }
     last_schedule = schedule;
-    if ( queue.length > 0 && in_flight < 2 ) {
-        t = queue[0];
-        queue = queue.slice(1);
-        turn( t.device, t.dir, t.notify, t.wattage );
-    }
+    check_queue();
+    if ( poll_now && kvs_status )
+        Shelly.call( "KVS.set", { key : "load-shed-status", value : JSON.stringify( kvs ) } )
 }
 
 function def( o ) {
