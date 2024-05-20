@@ -1,8 +1,6 @@
 // load-shedding script will keep measured usage between a low (min) and high
 // (max) total power (watts), by controlling power to other devices
 
-// Shelly.call("KVS.set",{ key:"load-shed-setting", value: { settings:[ {schedule:"All Nights Grid", kvs:[ {key:"start",value:"21:11"} ] } ] } } )
-
 // Key considerations:
 
 // 1. Make sure the value set for max is greater than the value set for min (10% should be considered the lowest spread, 20% is a better minimum spread)
