@@ -130,6 +130,7 @@ function callback( result, error_code, error_message, user_data ) {
 }
 
 function turn( device, dir, notify, wattage ) {
+    device = devices[ device_map[ device ] ];
     if ( dir == "on" && device.presumed_state == "on" )
         verifying = true;
     else
@@ -220,7 +221,7 @@ function find_active_schedule( ) {
 
 function toggle_all( dir, notify, wattage ) {
     for ( d in devices ) {
-        qturn( devices[ d ], dir, notify, wattage );
+        qturn( devices[ d ].name, dir, notify, wattage );
     }
 }
 
@@ -235,10 +236,10 @@ function check_queue( ) {
 function process_kv( result, error_code, error_message ) {
     if ( last_kv != result.value ) {
         last_kv = result.value;
-        if ( def( result.value.settings ) ) {
-            for ( s in result.value.settings ) {
-                 setting = result.value.settings[ s ];
-                 // print( "THERE: [ " + JSON.stringify( setting ) + " ]");
+        j = JSON.parse( result.value );
+        if ( def( j.settings ) ) {
+            for ( s in j.settings ) {
+                 setting = j.settings[ s ];
                  if ( def( setting.schedule ) &&
                       def( setting.kvs ) &&
                       setting.schedule in schedule_map  )
@@ -254,7 +255,9 @@ function process_kv( result, error_code, error_message ) {
 }
 
 function check_power( msg ) {
+    if ( msg === undefined ) return;
     check_queue();
+    now = Date.now() / 1000;
     poll_now = false;
     if ( def( msg.delta ) ) {
         if ( def( msg.delta.apower ) && msg.id in Pro4PM_channels )
@@ -287,8 +290,9 @@ function check_power( msg ) {
         if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, kvs.power ) else qturn( s.off[d], "off", notify, kvs.power );
         if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, kvs.power ) else qturn( s.on[d], "on", notify, kvs.power );
     } 
-    if ( Date.now() / 1000 > last_cycle_time + poll_time || verifying && Date.now() / 1000 > last_cycle_time + short_poll ) {
-        last_cycle_time = Date.now() / 1000;
+
+    if ( now > last_cycle_time + poll_time || verifying && now > last_cycle_time + short_poll ) {
+        last_cycle_time = now;
         poll_now = true;
     }
     if ( priority.length ) {
@@ -309,11 +313,11 @@ function check_power( msg ) {
         if ( def( msg.delta ) || schedule != last_schedule ) {
             if ( poll_now ) {
                 if ( kvs.direction === "loading" ) {
-                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "on", notify, kvs.power );
+                    qturn( priority[ idx_next_to_toggle ].name, "on", notify, kvs.power );
                     if ( idx_next_to_toggle < priority.length -1 ) idx_next_to_toggle += 1;
                 }
                 if ( kvs.direction === "shedding" ) {
-                    qturn( devices[ device_map[ priority[ idx_next_to_toggle ] ] ], "off", notify, kvs.power );
+                    qturn( priority[ idx_next_to_toggle ], "off", notify, kvs.power );
                     if ( idx_next_to_toggle > 0 ) idx_next_to_toggle -= 1;
                 }
             }
