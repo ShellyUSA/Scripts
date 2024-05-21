@@ -255,7 +255,7 @@ function process_kv( result, error_code, error_message ) {
 }
 
 function check_power( msg ) {
-    if ( msg === undefined ) return;
+    if (!def(msg)) return;
     check_queue();
     now = Date.now() / 1000;
     poll_now = false;
@@ -313,7 +313,7 @@ function check_power( msg ) {
         if ( def( msg.delta ) || schedule != last_schedule ) {
             if ( poll_now ) {
                 if ( kvs.direction === "loading" ) {
-                    qturn( priority[ idx_next_to_toggle ].name, "on", notify, kvs.power );
+                    qturn( priority[ idx_next_to_toggle ], "on", notify, kvs.power );
                     if ( idx_next_to_toggle < priority.length -1 ) idx_next_to_toggle += 1;
                 }
                 if ( kvs.direction === "shedding" ) {
