@@ -35,86 +35,88 @@
 
 /************************   settings  ************************/
 
-let Pro4PM_channels = [ 0, 1, 2, 3 ];      // default to sum of all channels for 4PM 
-let Pro3EM_channels = [ 'a', 'b', 'c' ];   // similar if device is 3EM
+Pro4PM_channels = [ 0, 1, 2, 3 ];      // default to sum of all channels for 4PM 
+Pro3EM_channels = [ 'a', 'b', 'c' ];   // similar if device is 3EM
 
-let max_ = 1200;                 // global max, used only if never defined in schedules
-let min_ = 900;                  //                    "                       "
-let poll_time = 300;             // unless overriden in a schedule, defines time between shedding or adding load
-let short_poll = 10;             // faster cycle time when verifying that an "on" device is still on
-let logging = false;
-let kvs_status = true;           // store status in key-value-store
-let simulation_power = 0;        // set this to manually test in console
-let simulation_hhmm = "";        // leave "" for normal operation, set to time like "03:00" to test
-let simulation_day = -1;         // -1 for normal operation, to test, 0=Sunday, 1=Monday...
+max_ = 1200;                 // global max, used only if never defined in schedules
+min_ = 900;                  //                    "                       "
+poll_time = 300;             // unless overriden in a schedule, defines time between shedding or adding load
+short_poll = 10;             // faster cycle time when verifying that an "on" device is still on
+logging = false;
+kvs_status = false;          // store status in key-value-store
+simulation_power = 0;        // set this to manually test in console
+simulation_hhmm = "";        // leave "" for normal operation, set to time like "03:00" to test
+simulation_day = -1;         // -1 for normal operation, to test, 0=Sunday, 1=Monday...
 
-let devices = [ { "name":"Water heater", "descr": "Shelly Pro 3EM", "addr":"192.168.1.105","gen":2, "type":"Switch", "id":100, "notify" : true },
-                { "name":"EV charger", "descr": "Shelly Pro 3EM", "addr":"192.168.1.106","gen":2, "type":"Switch", "id":100, "notify" : true },
-                { "name":"Pool Pump", "descr": "Shelly Pro 3EM", "addr":"192.168.1.107","gen":2, "type":"Switch", "id":100, "notify" : false },
-                { "name":"Oven", "descr": "Shelly Pro 3EM", "addr":"192.168.1.108","gen":2, "type":"Switch", "id":100, "notify" : true },
-                { "name":"Air Conditioner", "descr": "Shelly Pro 3EM", "addr":"192.168.1.109","gen":2, "type":"Switch", "id":100, "notify" : false },
-                { "name":"Ceiling fan",  "descr": "Shelly 1PM", "addr":"192.168.1.110","gen":1, "type":"relay", "id":0, "notify" : false },
-                { "name":"Hot Tub", "descr": "NodeRed endpoint to control non-shelly devices", 
-                         "on_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
-                         "off_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
-                         "notify" : false },
-                { "name":"Entertainment Center",  "descr": "Shelly Plus 2PM relay single channel",
-                         "addr":"192.168.1.114","gen":2,"type":"relay","id":0, "notify" : true },
-                { "name":"HVAC",  "descr": "Shelly Plus 1PM with contactor",
-                         "addr":"192.168.1.111","gen":2,"type":"relay","id":0, "notify" : true },
-                { "name":"Dishwasher",  "descr": "Shelly Plus 2PM relay first channel",
-                         "addr":"192.168.1.112","gen":2,"type":"relay","id":0, "notify" : true },
-                { "name":"Microwave", "descr": "Shelly Plus 2PM relay second channel",
-                         "addr":"192.168.1.112","gen":2,"type":"relay","id":1, "notify" : true },
-              ]
+devices = [ { "name":"Water heater", "descr": "Shelly Pro 3EM", "addr":"192.168.1.105","gen":2, "type":"Switch", "id":100, "notify" : true },
+            { "name":"EV charger", "descr": "Shelly Pro 3EM", "addr":"192.168.1.106","gen":2, "type":"Switch", "id":100, "notify" : true },
+            { "name":"Pool Pump", "descr": "Shelly Pro 3EM", "addr":"192.168.1.107","gen":2, "type":"Switch", "id":100, "notify" : false },
+            { "name":"Oven", "descr": "Shelly Pro 3EM", "addr":"192.168.1.108","gen":2, "type":"Switch", "id":100, "notify" : true },
+            { "name":"Air Conditioner", "descr": "Shelly Pro 3EM", "addr":"192.168.1.109","gen":2, "type":"Switch", "id":100, "notify" : false },
+            { "name":"Ceiling fan",  "descr": "Shelly 1PM", "addr":"192.168.1.110","gen":1, "type":"relay", "id":0, "notify" : false },
+            { "name":"Hot Tub", "descr": "NodeRed endpoint to control non-shelly devices", 
+                     "on_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
+                     "off_url":"http://192.168.2.1:1880/endpoint/hot_tub?state=ON",
+                     "notify" : false },
+            { "name":"Entertainment Center",  "descr": "Shelly Plus 2PM relay single channel",
+                     "addr":"192.168.1.114","gen":2,"type":"relay","id":0, "notify" : true },
+            { "name":"HVAC",  "descr": "Shelly Plus 1PM with contactor",
+                     "addr":"192.168.1.111","gen":2,"type":"relay","id":0, "notify" : true },
+            { "name":"Dishwasher",  "descr": "Shelly Plus 2PM relay first channel",
+                     "addr":"192.168.1.112","gen":2,"type":"relay","id":0, "notify" : true },
+            { "name":"Microwave", "descr": "Shelly Plus 2PM relay second channel",
+                     "addr":"192.168.1.112","gen":2,"type":"relay","id":1, "notify" : true },
+          ]
 
-let notify = [ { "name": "notify off", "descr": "IFTTT webhook to fire when a device is disabled",
-                  "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=knobs" },
-                { "name": "notify on",
-                  "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=sally" },
-             ]
+notify = [ { "name": "notify off", "descr": "IFTTT webhook to fire when a device is disabled",
+              "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=knobs" },
+            { "name": "notify on",
+              "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=sally" },
+         ]
 
-let schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "days":"SMTWTFS",
-                    "descr":"Weekdays, starting 7AM, when solar production ramps up",
-                    "priority":["HVAC","Oven","Microwave","Entertainment Center","Water heater","EV charger","Dishwasher","Ceiling fan","Pool Pump"],
-                    "min":2500, "max":3500, "poll_time":300, short_poll:10 },
-                 { "name":"Evening Time of Use-Peak Demand", "enable": true, "start":"17:00", "days":".MTWTF.",
-                    "descr":"Weekdays, starting 5PM, returning to grid, time of use/peak demand rates apply with penalty",
-                    "priority":["HVAC","Ceiling fan","Entertainment Center","Microwave","Dishwasher"],
-                    "off" : ["Pool Pump"],
-                    "min":2000, "max":3000, "poll_time":300, short_poll:10,
-                    "notify_on" : "notify on", "notify_off" : "notify off" },
-                 { "name":"Weekend Nights Grid", "enable": true, "start":"17:00", "days":"S.....S",
-                    "descr":"Saturday/Sunday after solar, no Time of Use rates",
-                    "on" : ["ALL"] },
-                 { "name":"All Nights Grid", "enable": true, "start":"20:00", "days":"SMTWTFS",
-                    "descr":"Every day, starting 8PM, returning to grid, time of use/peak demand rates have ended",
-                    "on" : ["ALL"] },
-               ]
+schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "days":"SMTWTFS",
+                "descr":"Weekdays, starting 7AM, when solar production ramps up",
+                "priority":["HVAC","Oven","Microwave","Entertainment Center","Water heater","EV charger","Dishwasher","Ceiling fan","Pool Pump"],
+                "min":2500, "max":3500, "poll_time":300, short_poll:10 },
+             { "name":"Evening Time of Use-Peak Demand", "enable": true, "start":"17:00", "days":".MTWTF.",
+                "descr":"Weekdays, starting 5PM, returning to grid, time of use/peak demand rates apply with penalty",
+                "priority":["HVAC","Ceiling fan","Entertainment Center","Microwave","Dishwasher"],
+                "off" : ["Pool Pump"],
+                "min":2000, "max":3000, "poll_time":300, short_poll:10,
+                "notify_on" : "notify on", "notify_off" : "notify off" },
+             { "name":"Weekend Nights Grid", "enable": true, "start":"17:00", "days":"S.....S",
+                "descr":"Saturday/Sunday after solar, no Time of Use rates",
+                "on" : ["ALL"] },
+             { "name":"All Nights Grid", "enable": true, "start":"20:00", "days":"SMTWTFS",
+                "descr":"Every day, starting 8PM, returning to grid, time of use/peak demand rates have ended",
+                "on" : ["ALL"] },
+           ]
 
 /***************   program variables, do not change  ***************/
 
-let ts = 0;
-let idx_next_to_toggle = -1;
-let last_cycle_time = 0;
-let channel_power = { };
-let verifying = false;
-let days = "SMTWTFS";
-let last_schedule = -1;
-let schedule = -1;
-let device_map = {};
-let schedule_map = {};
-let priority = [];
-let notify = ""
-let queue = []
-let in_flight = 0;
-let kvs = { device_states : { }, power : 0, schedule : "none", direction : "coasting" };
-let last_kv = "";
+ts = 0;
+idx_next_to_toggle = -1;
+last_cycle_time = 0;
+channel_power = { };
+verifying = false;
+days = "SMTWTFS";
+last_schedule = -1;
+schedule = -1;
+device_map = {};
+schedule_map = {};
+priority = [];
+notify = ""
+queue = []
+in_flight = 0;
+kvs = { device_states : { }, power : 0, schedule : "none", direction : "coasting" };
+last_kv = "";
+notify_on = "";
+notify_off = "";
 
 function total_power( ) {
     if ( simulation_power ) return simulation_power;
     let power = 0;
-    for( k in channel_power )
+    for( let k in channel_power )
        power += channel_power[ k ];
     return power;
 }
@@ -129,8 +131,9 @@ function callback( result, error_code, error_message, user_data ) {
     }
 }
 
-function turn( device, dir, notify, wattage ) {
-    device = devices[ device_map[ device ] ];
+function turn( pdevice, dir, notify, wattage ) {
+    let device = devices[ device_map[ pdevice ] ];
+    let cmd = "";
     if ( dir == "on" && device.presumed_state == "on" )
         verifying = true;
     else
@@ -139,11 +142,11 @@ function turn( device, dir, notify, wattage ) {
         kvs.device_states[ device.name ] = dir;
 
     device.presumed_state = dir;
-    on = dir == "on" ? "true" : "false";
+    let on = dir == "on" ? "true" : "false";
     print( "Turn " + device.name + " " + dir );
+
     if ( simulation_hhmm || simulation_power || simulation_day > -1 ) return;
     if ( def( device.notify ) && device.notify ) {
-        cmd = "";
         if ( dir == "on" && notify_on != "" )
             cmd = notify[ notify_on ];
         if ( dir == "off" && notify_off != "" )
@@ -159,9 +162,9 @@ function turn( device, dir, notify, wattage ) {
 
     if ( def( device.gen ) ) {
         if ( device.gen == 1 )
-            let cmd = device.type+"/"+device.id.toString()+"?turn="+dir
+            cmd = device.type+"/"+device.id.toString()+"?turn="+dir
         else
-            let cmd = "rpc/"+device.type+".Set?id="+device.id.toString()+"&on="+on
+            cmd = "rpc/"+device.type+".Set?id="+device.id.toString()+"&on="+on
         Shelly.call( "HTTP.GET", { url: "http://"+device.addr+"/"+cmd }, callback, device.name );
         in_flight++;
     }
@@ -176,6 +179,10 @@ function turn( device, dir, notify, wattage ) {
 }
 
 function qturn( device, dir, notify, wattage ) {
+    if (!def(device)) {
+        print("undef in qturn");
+        return;
+    }
     queue.push( { "device": device, "dir": dir, "notify": notify, "wattage": wattage } )
 }
 
@@ -202,7 +209,7 @@ function find_active_schedule( ) {
     if ( simulation_hhmm != "" )
         hhmm = simulation_hhmm;
     for ( n in schedules ) {
-        s = schedules[ n ];
+        let s = schedules[ n ];
         if ( def( s.enable ) && ! s.enable ) continue;
         if ( s.start > last_time ) {
             last_time = s.start;
@@ -220,14 +227,14 @@ function find_active_schedule( ) {
 }
 
 function toggle_all( dir, notify, wattage ) {
-    for ( d in devices ) {
+    for ( let d in devices ) {
         qturn( devices[ d ].name, dir, notify, wattage );
     }
 }
 
 function check_queue( ) {
     if ( queue.length > 0 && in_flight < 2 ) {
-        t = queue[0];
+        let t = queue[0];
         queue = queue.slice(1);
         turn( t.device, t.dir, t.notify, t.wattage );
     }
@@ -236,10 +243,10 @@ function check_queue( ) {
 function process_kv( result, error_code, error_message ) {
     if ( last_kv != result.value ) {
         last_kv = result.value;
-        j = JSON.parse( result.value );
+        let j = JSON.parse( result.value );
         if ( def( j.settings ) ) {
             for ( s in j.settings ) {
-                 setting = j.settings[ s ];
+                 let setting = j.settings[ s ];
                  if ( def( setting.schedule ) &&
                       def( setting.kvs ) &&
                       setting.schedule in schedule_map  )
@@ -257,38 +264,36 @@ function process_kv( result, error_code, error_message ) {
 function check_power( msg ) {
     if (!def(msg)) return;
     check_queue();
-    now = Date.now() / 1000;
-    poll_now = false;
+    let now = Date.now() / 1000;
+    let poll_now = false;
     if ( def( msg.delta ) ) {
         if ( def( msg.delta.apower ) && msg.id in Pro4PM_channels )
             channel_power[ msg.id ] = msg.delta.apower;
         if ( def( msg.delta.a_act_power ) )
-            for ( k in Pro3EM_channels )
+            for ( let k in Pro3EM_channels )
                 channel_power[ Pro3EM_channels[k] ] = msg.delta[ Pro3EM_channels[k] + '_act_power' ];
     }
     kvs.power = total_power( );
 
-    schedule = find_active_schedule( ); 
+    let schedule = find_active_schedule( ); 
     if ( schedule != last_schedule ) {
         kvs.schedule = schedules[ schedule ].name;
         print( "activated " + kvs.schedule );
-        s = schedules[ schedule ]
+        let s = schedules[ schedule ]
         if ( def( s.priority ) )
             priority = s.priority;
         else
             priority = [];
         kvs.direction = "loading";
         idx_next_to_toggle = 0;
-        notify_on = "";
-        notify_off = "";
         if ( def( s.min ) ) min_ = s.min;
         if ( def( s.max ) ) max_ = s.max;
         if ( def( s.poll_time ) ) poll_time = s.poll_time;
         if ( def( s.short_poll ) ) short_poll = s.short_poll;
         if ( def( s.notify_on ) ) notify_on = s.notify_on;
         if ( def( s.notify_off ) ) notify_off = s.notify_off;
-        if ( def( s.off ) ) for ( d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, kvs.power ) else qturn( s.off[d], "off", notify, kvs.power );
-        if ( def( s.on ) ) for ( d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, kvs.power ) else qturn( s.on[d], "on", notify, kvs.power );
+        if ( def( s.off ) ) for  (let  d in s.off ) if ( s.off[d] == "ALL" ) toggle_all( "off", notify, kvs.power ) else qturn( s.off[d], "off", notify, kvs.power );
+        if ( def( s.on ) ) for ( let d in s.on ) if ( s.on[d] == "ALL" ) toggle_all( "on", notify, kvs.power ) else qturn( s.on[d], "on", notify, kvs.power );
     } 
 
     if ( now > last_cycle_time + poll_time || verifying && now > last_cycle_time + short_poll ) {
@@ -336,13 +341,13 @@ function def( o ) {
 }
 
 function check_devices( l, t, s ) {
-    for ( d in l )
+    for ( let d in l )
         if ( ! ( l[d] in device_map ) && l[d] != "ALL" )
             print( "Undefined device " + l[d] + " in list '" + t + "' of schedule " + s.name );
 }
 
 function init( ) {
-    for ( d in devices ) {
+    for ( let d in devices ) {
         device_map[ devices[d].name ] = d;
         d.presumed_state = "unknown";
     }
