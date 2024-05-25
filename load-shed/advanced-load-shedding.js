@@ -104,8 +104,8 @@ last_schedule = -1;
 schedule = -1;
 device_map = {};
 schedule_map = {};
+notify_map = {};
 priority = [];
-notify = ""
 queue = []
 in_flight = 0;
 kvs = { device_states : { }, power : 0, schedule : "none", direction : "coasting" };
@@ -148,9 +148,9 @@ function turn( pdevice, dir, notify, wattage ) {
     if ( simulation_hhmm || simulation_power || simulation_day > -1 ) return;
     if ( def( device.notify ) && device.notify ) {
         if ( dir == "on" && notify_on != "" )
-            cmd = notify[ notify_on ];
+            cmd = notify[ notify_map[ notify_on ] ];
         if ( dir == "off" && notify_off != "" )
-            cmd = notify[ notify_off ];
+            cmd = notify[ notify_map[ notify_off ] ];
         if ( cmd != "" ) {
             cmd.replace( "{device}", device.name );
             cmd.replace( "{state}", dir );
@@ -351,7 +351,7 @@ function init( ) {
         device_map[ devices[d].name ] = d;
         d.presumed_state = "unknown";
     }
-    for ( sched in schedules ) {
+    for ( let sched in schedules ) {
         schedule_map[ schedules[ sched ].name ] = sched;
         let s = schedules[sched];
         s.start = pad0( s.start, 5);
@@ -359,6 +359,8 @@ function init( ) {
         if ( def(s.on) ) check_devices(s.on, "on", s );
         if ( def(s.priority) ) check_devices(s.priority, "priority", s );
     }
+    for ( let n in notify )
+        notify_map[ notify[ n ].name ] = n;
 }
 
 init();
