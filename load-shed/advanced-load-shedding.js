@@ -152,9 +152,9 @@ function turn( pdevice, dir, notify, wattage ) {
         if ( dir == "off" && notify_off != "" )
             cmd = notify[ notify_map[ notify_off ] ];
         if ( cmd != "" ) {
-            cmd.replace( "{device}", device.name );
-            cmd.replace( "{state}", dir );
-            cmd.replace( "{wattage}", wattage );
+            cmd = cmd.replace( "{device}", device.name );
+            cmd = cmd.replace( "{state}", dir );
+            cmd = cmd.replace( "{wattage}", wattage );
             Shelly.call( "HTTP.GET", { url: cmd }, callback, device.name );
             in_flight++;
         }
