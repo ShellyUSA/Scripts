@@ -1,7 +1,3 @@
-// 5/27 30m    Investigated TLS; implemented timer loop
-// 5/28 30m    device loop completed
-// 5/28 1hr    
-
 /************************   settings  ************************/
 notify = [ { "name": "web-a", "url":"https://.../page?device={device}&state={state}" },
            { "name": "web-b", "url":"https://.../b/page?device={device}&state={state}" },
