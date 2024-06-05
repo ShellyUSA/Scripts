@@ -1,17 +1,20 @@
-// Allow the Shelly Wall Dimmer work in a N-Way Dimmer group
-// A change at any dimmer will be sent to all the others in the group
-// The one with the load connected to the light will make or get the update
-// and adjust the light accordingly
+// Allows between 2 and 5 Shelly Plus, Pro, and Gen3 dimming products to work in a N-Way Dimmer group. A change at any dimmer is sent to all devices in the group. 
 
-// BUG - the adjustment of the brightness setting on the dimmer does not trigger an even
-//       as a result the script is not currently synchronizing the dimmer value until
-//       the swith is turned off. The brightness value of that is synced is the value
-//       of the dimmer where the button was pressed.
+//This script allows multiple configurations - here is a list of some potential examples:
 
-// TODO - Dynamically create list based on what is on the network
-//        OR move to bluetooth and avoid the need for a network
+//Combine 2 Plus Wall Dimmer switches on a 3 way circuit or 3 Plus Wall Dimmers on a 4 way circuit. 
+//One switch controls the load while output for other switches is capped off making them input-only.
 
-// Update the Group to reflect all the switches in the group
+//Combine Plus Wall Dimmer and three Plus 0-10v Dimmers (wired at fixtures) to eliminate the requirement 
+//to pull low voltage wire to a switch. Plus Wall Dimmer controls dimming for the 0-10v dimmers
+
+//Combine 5 lighting circuits into one group, with on/off/dim/bright for the entire group set from 
+//any Shelly in the group
+
+//Note - you should set static IP address and matching DHCP reservations for all Shelly devices in the group
+
+// Update the "Group" setting to include IP address for all the switches in the group
+
 let CONFIG = {
   Group: ["192.168.68.74","192.168.68.113"],  // Change these to reflect your dimmer group
   wifi_ip: "", // You do not need to fill in this line, the script will fill it in
