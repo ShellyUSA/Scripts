@@ -1,7 +1,7 @@
 /************************   settings  ************************/
 notify = [ { "name": "web-a", "url":"http://192.168.1.188/rpc/switch.Toggle?id=0" },
            { "name": "web-b", "url":"http://192.168.1.189/rpc/switch.Toggle?id=0" },
-           { "name": "mq-c", "topic":"updown", "msg":"{device} is {state}"} ];
+           { "name": "mq-c", "topic":"updown", "message":"{device} is {state}"} ];
 
 devices = [ { "name": "plug-a",
                "alerts": [ {"notify": "web-a", "dir": "down"}, 
