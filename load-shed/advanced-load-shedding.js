@@ -19,7 +19,7 @@
 //             ...
 //           ]
 // notify = [ { "name":, "descr":, "url": },                               # each named notifiction can be used in a schedule
-//            ...                                                          # occurences of {device}, {state}, and {wattage} will be replaced inline
+//            ...                                                          # occurences of {timestamp}, {device}, {state}, and {wattage} will be replaced inline
 //          ]
 // schedules = [
 //               { "name":,"enable":,"start":,"days":,                     # enable is optional, defaults to true, days optional, defaults to SMTWTFS
@@ -72,6 +72,11 @@ notify = [ { "name": "notify off", "descr": "IFTTT webhook to fire when a device
               "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=knobs" },
             { "name": "notify on",
               "url":"https://maker.ifttt.com/trigger/send_email/with/key/crLBieQXeiUi1SwQUmYMLn&value1=sally" },
+    { "name": "notify any", 
+        "descr": "Send status of device to custom Flask API",
+        "url":"http://192.168.1.142:404/store",
+        "post":"{\"key\":\"{device}\", \"value\":{\"device\":\"{device}\",\"state\":\"{state}\", \"wattage\":{wattage}}}"
+    }
          ]
 
 schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "days":"SMTWTFS",
@@ -86,6 +91,7 @@ schedules = [ { "name":"Daytime Solar", "enable": true, "start":"07:00", "days":
                 "notify_on" : "notify on", "notify_off" : "notify off" },
              { "name":"Weekend Nights Grid", "enable": true, "start":"17:00", "days":"S.....S",
                 "descr":"Saturday/Sunday after solar, no Time of Use rates",
+                "notify_on" : "notify any", "notify_off" : "notify any",
                 "on" : ["ALL"] },
              { "name":"All Nights Grid", "enable": true, "start":"20:00", "days":"SMTWTFS",
                 "descr":"Every day, starting 8PM, returning to grid, time of use/peak demand rates have ended",
@@ -124,6 +130,7 @@ function total_power( ) {
 function callback( result, error_code, error_message, user_data ) {
     in_flight--;
     if ( error_code != 0 ) {
+        print('\n'+error_message)
         print( "fail " + user_data );
         // TBD: currently we don't have any retry logic
     } else {
@@ -131,9 +138,20 @@ function callback( result, error_code, error_message, user_data ) {
     }
 }
 
+function notify_callback( result, error_code, error_message, user_data ) {
+    in_flight--;
+    if ( error_code != 0 ) {
+        print('\n'+error_message)
+        print( "notify call fail " + user_data );
+        // TBD: currently we don't have any retry logic
+    } else {
+        if ( logging ) print( "notify success" );
+    }
+}
+
 function turn( pdevice, dir, notify, wattage ) {
     let device = devices[ device_map[ pdevice ] ];
-    let cmd = "";
+    let cmd;
     if ( dir == "on" && device.presumed_state == "on" )
         verifying = true;
     else
@@ -143,19 +161,31 @@ function turn( pdevice, dir, notify, wattage ) {
 
     device.presumed_state = dir;
     let on = dir == "on" ? "true" : "false";
-    print( "Turn " + device.name + " " + dir );
+    print( "Attempt turn " + device.name + " " + dir );
 
     if ( simulation_hhmm || simulation_power || simulation_day > -1 ) return;
     if ( def( device.notify ) && device.notify ) {
+        let nowts = Date.now();
         if ( dir == "on" && notify_on != "" )
             cmd = notify[ notify_map[ notify_on ] ];
         if ( dir == "off" && notify_off != "" )
             cmd = notify[ notify_map[ notify_off ] ];
-        if ( cmd != "" ) {
-            cmd = cmd.replace( "{device}", device.name );
-            cmd = cmd.replace( "{state}", dir );
-            cmd = cmd.replace( "{wattage}", wattage );
-            Shelly.call( "HTTP.GET", { url: cmd }, callback, device.name );
+        cmd["url"] = cmd["url"].replace( "{device}", device.name );
+        cmd["url"] = cmd["url"].replace( "{state}", dir );
+        cmd["url"] = cmd["url"].replace( "{wattage}", wattage );
+        cmd["url"] = cmd["url"].replace( "{timestamp}", nowts );
+        if ( cmd && cmd["post"] ) {
+            print( "notify post " + cmd["url"] );
+            cmd["post"] = cmd["post"].replace( "{device}", device.name );
+            cmd["post"] = cmd["post"].replace( "{state}", dir );
+            cmd["post"] = cmd["post"].replace( "{wattage}", wattage );
+            cmd["post"] = cmd["post"].replace( "{timestamp}", nowts );
+            Shelly.call( "HTTP.POST", { url: cmd["url"], body: cmd["post"] }, notify_callback );
+            in_flight++;
+        }
+        else if ( cmd ) {
+            print( "notify get " + cmd["url"] );
+            Shelly.call( "HTTP.GET", { url: cmd["url"] }, notify_callback );
             in_flight++;
         }
     }
