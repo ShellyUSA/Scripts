@@ -5,12 +5,14 @@ Each action can be an MQTT message or an http web request.
 *************************   settings  ************************/
 
 tasks = [ { "name": "turn-off-router", "url":"http://192.168.1.188/rpc/switch.Off?id=0" },
-          { "name": "turn-on-router-after-delay", "delay":15, "url":"http://192.168.1.189/rpc/switch.On?id=0" },
+          { "name": "turn-on-router-after-delay", "delay": 10, "url":"http://192.168.1.189/rpc/switch.On?id=0" },
+          { "name": "resume-polling-after-delay", "resume_poll": 30},
           { "name": "mq-c", "topic":"updown", "message":"{device} is {state}"} ];
 
 devices = [ { "name": "test-web-connection",
                "actions": [ {"task": "turn-off-router", "dir": "down"},
                             {"task": "turn-on-router-after-delay", "dir": "down"},  
+                            {"task": "resume-polling-after-delay", "dir": "down"},  
                             {"task": "mq-c", "dir": "down"} ], 
                "url": "http://192.168.1.40/rpc/sys.getStatus",
                "poll_time": 10  },
@@ -66,6 +68,7 @@ function action( d ) {
         let action = d.actions[ d.actions_processed ];
 
         if ( action.dir == 'both' || action.dir == d.state ) {
+            if ( def( task_map[ action.task ].resume_poll ) ) task_map[ action.task ].delay = task_map[ action.task ].resume_poll;
             if ( def( task_map[ action.task ].delay ) ) {
                 if ( ! def( task_map[ action.task ].end_of_delay ) ) {
                    task_map[ action.task ].end_of_delay = Date.now() / 1000 + task_map[ action.task ].delay;
@@ -73,9 +76,17 @@ function action( d ) {
                 } else {
                    if ( Date.now() / 1000 < task_map[ action.task ].end_of_delay ) return;
                 }
-                task_map[ action.task ].removeAttribute('end_of_delay');
+                task_map[ action.task ].end_of_delay = undefined;
             }
-            if ( def( task_map[ action.task ].url ) ) {
+            if ( def( task_map[ action.task ].resume_poll ) ) {
+                if ( d.state == 'down' ) {
+                    if ( verbose > 0 ) print( "resume-poll (still down)" )
+                    d.cycle_count += 1;
+                    d.state = 'poll-again';
+                } else {
+                    if ( verbose > 0 ) print( "resume-poll (up)" )
+                }
+            } else if ( def( task_map[ action.task ].url ) ) {
                 in_flight++;
                 let url = apply_templates( task_map[ action.task ].url, d );
                 if ( verbose > 0 ) print( "webhook " + action.task );
@@ -100,10 +111,11 @@ function check_states( ) {
         let d = devices[ next_device ];
         if ( d.enable ) {
             if ( verbose > 2 ) print( "check " + d.name + " (" + d.action + ") [" + in_flight + "]" );
-            if ( ( d.state == 'unknown' || d.last_poll < now - d.poll_time ) && d.action != 'in-flight' && d.action != 'changed' ) {
+            if ( ( d.state == 'unknown' || d.state == 'poll-again' || d.last_poll < now - d.poll_time ) && d.action != 'in-flight' && d.action != 'changed' ) {
                 d.action = 'in-flight';
                 in_flight++;
                 d.actions_processed = 0;
+                if ( d.state != 'poll-again' ) d.cycle_count = 1;
                 d.last_poll = now;
                 if ( verbose > 1 ) print( "polling " + d.name + " [" + in_flight + "]" );
                 Shelly.call( "HTTP.GET", { url: d.url }, poll_response, next_device );
