@@ -4,14 +4,15 @@ request, and if they become unreachable, take a series of actions.
 Each action can be an MQTT message or an http web request.
 *************************   settings  ************************/
 
-tasks = [ { "name": "web-a", "url":"http://192.168.1.188/rpc/switch.Toggle?id=0" },
-          { "name": "web-b", "url":"http://192.168.1.189/rpc/switch.Toggle?id=0" },
+tasks = [ { "name": "turn-off-router", "url":"http://192.168.1.188/rpc/switch.Off?id=0" },
+          { "name": "turn-on-router-after-delay", "delay":15, "url":"http://192.168.1.189/rpc/switch.On?id=0" },
           { "name": "mq-c", "topic":"updown", "message":"{device} is {state}"} ];
 
-devices = [ { "name": "plug-a",
-               "actions": [ {"task": "web-a", "dir": "down"}, 
+devices = [ { "name": "test-web-connection",
+               "actions": [ {"task": "turn-off-router", "dir": "down"},
+                            {"task": "turn-on-router-after-delay", "dir": "down"},  
                             {"task": "mq-c", "dir": "down"} ], 
-               "url": "http://192.168.1.180/rpc/sys.getStatus",
+               "url": "http://192.168.1.40/rpc/sys.getStatus",
                "poll_time": 10  },
             { "name": "plug-b",
               "enable": false,
@@ -21,7 +22,7 @@ devices = [ { "name": "plug-a",
 
 cycle_time = 5;    // the script runs periodically to check if it is time to poll or send queued notifications
 // cycle time defines the minimum poll_time for any device, and affects latency of message delivery
-verbose = 3;       // level 0=quiet, 1=state changes and actions, 2=polling, 3=copious
+verbose = 1;       // level 0=quiet, 1=state changes and actions, 2=polling, 3=copious
 
 /***************   program variables, do not change  ***************/
 in_flight = 0;
@@ -65,6 +66,15 @@ function action( d ) {
         let action = d.actions[ d.actions_processed ];
 
         if ( action.dir == 'both' || action.dir == d.state ) {
+            if ( def( task_map[ action.task ].delay ) ) {
+                if ( ! def( task_map[ action.task ].end_of_delay ) ) {
+                   task_map[ action.task ].end_of_delay = Date.now() / 1000 + task_map[ action.task ].delay;
+                   return;
+                } else {
+                   if ( Date.now() / 1000 < task_map[ action.task ].end_of_delay ) return;
+                }
+                task_map[ action.task ].removeAttribute('end_of_delay');
+            }
             if ( def( task_map[ action.task ].url ) ) {
                 in_flight++;
                 let url = apply_templates( task_map[ action.task ].url, d );
