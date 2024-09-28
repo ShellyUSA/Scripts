@@ -16,7 +16,7 @@
 // Update the "Group" setting to include IP address for all the switches in the group
 
 let CONFIG = {
-  Group: ["192.168.68.74","192.168.68.113"],  // Change these to reflect your dimmer group
+  Group: ["10.0.0.188","10.0.0.90"],  // Change these to reflect your dimmer group
   wifi_ip: "", // You do not need to fill in this line, the script will fill it in
 };
 
@@ -163,7 +163,7 @@ function syncKVSToDimmer(cs) {
       endpoint: cs.item,
       callbackfunction: function (result, error_code, message) {
         print("myFunction Callback results");
-        print(JSON.stringify(result), error_message, message);
+        print(JSON.stringify(result), error_code, message);
       }
     }
   );
@@ -199,8 +199,8 @@ print("Starting ...")
 let tds = GetLocalDimmerCurrentStatus();
 updateLocalKVS(tds);
 // Define event handlers
-// the local key value store was updated, update the local switch settings
 
+// the local key value store was updated, update the local switch settings
 Shelly.addStatusHandler(
   function (event, userData) {
     print("Status Handler intercept :",JSON.stringify(event));
@@ -208,28 +208,10 @@ Shelly.addStatusHandler(
       print("Key Value Store has been updated");
       print("Update local setting");
       UpdateLightState();
+    } else if (event.name === 'light') {
+      print("Someone pressed the light switch");
+      print("Syncing with the other switches");
+      UpdateKVSState() 
     }
   }
 );
-
-//  Someone pressed the local light switch
-
-Shelly.addEventHandler(
-  function (event, userData) {
-    print("Event Handler intercept :",JSON.stringify(event));
-    if(event.name === 'light'){
-      print("Someone pressed the light switch");
-      print("Syncing with the other switches");
-      UpdateKVSState()
-    }         
-  }
-);
-
-/*
- // Poling attempt, did not work, will need some event handler to deal with dimmer changes
- function main_loop () {
-   UpdateKVSState();
-   //UpdateLightState();
- }
- Timer.set(1000,true,main_loop)
- */
