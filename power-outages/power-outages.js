@@ -7,14 +7,14 @@ Each action can be an MQTT message or an http web request.
 tasks = [{ "name": "turn-off-router", "url": "http://192.168.1.188/rpc/switch.Off?id=0" },
 { "name": "turn-on-router-after-delay", "delay": 10, "url": "http://192.168.1.189/rpc/switch.On?id=0" },
 { "name": "resume-polling-after-delay", "resume_poll": 30 },
-{ "name": "mq-c", "topic": "updown", "message": "{device} is {state}" }];
+{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s)" }];
 
 checks = [{
     "name": "test-web-connection",
     "actions": [{ "task": "turn-off-router", "dir": "down" },
     { "task": "turn-on-router-after-delay", "dir": "down" },
     { "task": "resume-polling-after-delay", "dir": "down" },
-    { "task": "mq-c", "dir": "down" }],
+    { "task": "mq-c", "dir": "up" }],
     "url": "http://192.168.1.94/rpc/sys.getStatus",
     "poll_time": 10
 },
@@ -50,6 +50,7 @@ function poll_response(result, error_code, error_message, chk) {
         checks[chk].state = new_state;
         checks[chk].action = 'changed';
         if (verbose > 0) print(checks[chk].name + " is now " + new_state + " [" + in_flight + "]");
+        if (verbose > 0 && new_state === "up") print("Number of cycles was " + checks[chk].cycle_count);
     }
 }
 
@@ -57,12 +58,13 @@ function action_response(result, error_code, error_message, task) {
     if (verbose > 2) print("action response");
     in_flight--;
     if (error_code != 0)
-        print("failed to send notification: " + task + " [" + in_flight + "]")
+        print("failed to run action: " + task + " [" + in_flight + "]")
 }
 
 function apply_templates(s, d) {
     s = s.replace('{device}', d.name);
     s = s.replace('{state}', d.state);
+    s = s.replace('{cycle_count}', d.cycle_count);
     return s;
 }
 
@@ -87,19 +89,23 @@ function action(d) {
                     if (verbose > 0) print("resume-poll (still down)")
                     d.cycle_count += 1;
                     d.state = 'poll-again';
+                    console.log(d.cycle_count + " down");
                 } else {
                     if (verbose > 0) print("resume-poll (up)")
+                    console.log(d.cycle_count + " up");
                 }
             } else if (def(task_map[action.task].url)) {
                 in_flight++;
                 let url = apply_templates(task_map[action.task].url, d);
                 if (verbose > 0) print("webhook " + action.task);
                 Shelly.call("HTTP.GET", { url: url }, action_response, action.task);
-            } else if (def(task_map[action.task].topic) && MQTT.isConnected()) {
+            } else if (def(task_map[action.task].topic)) {
                 let topic = apply_templates(task_map[action.task].topic, d);
                 let message = apply_templates(task_map[action.task].message, d);
-                if (verbose > 0) print("MQTT " + action.task);
-                MQTT.publish(topic, message);
+                if (verbose > 0) print("MQTT " + action.task + " " + message);
+                if (MQTT.isConnected()) {
+                    MQTT.publish(topic, message);
+                }
             }
         }
         d.actions_processed++;
@@ -126,7 +132,7 @@ function check_states() {
             } else if (d.action == 'changed' && (d.state == 'up' || d.state == 'down')) {
                 action(d);
             }
-        } else
+        } else 
             if (verbose > 2) print(d.name + " is disabled [" + in_flight + "]");
         next_device++;
         if (next_device >= checks.length) next_device = 0;
