@@ -47,6 +47,7 @@ function poll_response(result, error_code, error_message, chk) {
     if (error_code != 0) new_state = 'down';
     checks[chk].action = 'complete';
     if (new_state != checks[chk].state) {
+        checks[chk].prior_state = checks[chk].state;
         checks[chk].state = new_state;
         checks[chk].action = 'changed';
         if (verbose > 0) print(checks[chk].name + " is now " + new_state + " [" + in_flight + "]");
@@ -73,7 +74,7 @@ function action(d) {
     while (in_flight < 3 && d.actions_processed < d.actions.length) {
         let action = d.actions[d.actions_processed];
 
-        if (action.dir == 'both' || action.dir == d.state) {
+        if ((action.dir == 'both' || action.dir == d.state) && d.prior_state != 'unknown') {
             if (def(task_map[action.task].resume_poll)) task_map[action.task].delay = task_map[action.task].resume_poll;
             if (def(task_map[action.task].delay)) {
                 if (!def(task_map[action.task].end_of_delay)) {
@@ -132,7 +133,7 @@ function check_states() {
             } else if (d.action == 'changed' && (d.state == 'up' || d.state == 'down')) {
                 action(d);
             }
-        } else 
+        } else
             if (verbose > 2) print(d.name + " is disabled [" + in_flight + "]");
         next_device++;
         if (next_device >= checks.length) next_device = 0;
@@ -144,6 +145,7 @@ function init() {
     if (verbose > 2) print("init");
     for (let d in checks) {
         checks[d].state = 'unknown';
+        checks[d].prior_state = 'unknown';
         checks[d].action = '';
         checks[d].last_poll = 0;
         checks[d].actions_processed = 0;
