@@ -7,7 +7,7 @@ Each action can be an MQTT message or an http web request.
 tasks = [{ "name": "turn-off-router", "url": "http://192.168.1.188/rpc/switch.Off?id=0" },
 { "name": "turn-on-router-after-delay", "delay": 10, "url": "http://192.168.1.189/rpc/switch.On?id=0" },
 { "name": "resume-polling-after-delay", "resume_poll": 30 },
-{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s)" }];
+{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s). It was down for {duration} seconds and came up at {uptime}." }];
 
 checks = [{
     "name": "test-web-connection",
@@ -50,6 +50,9 @@ function poll_response(result, error_code, error_message, chk) {
         checks[chk].prior_state = checks[chk].state;
         checks[chk].state = new_state;
         checks[chk].action = 'changed';
+        if (new_state === "down") checks[chk].prior_downtime = Date.now() / 1000;
+        if (new_state === "up") checks[chk].prior_uptime = Date.now() / 1000;
+        print(checks[chk].prior_downtime + " time down. " + checks[chk].prior_uptime + " time up.")
         if (verbose > 0) print(checks[chk].name + " is now " + new_state + " [" + in_flight + "]");
         if (verbose > 0 && new_state === "up") print("Number of cycles was " + checks[chk].cycle_count);
     }
@@ -66,6 +69,8 @@ function apply_templates(s, d) {
     s = s.replace('{device}', d.name);
     s = s.replace('{state}', d.state);
     s = s.replace('{cycle_count}', d.cycle_count);
+    s = s.replace('{duration}', d.prior_uptime - d.prior_downtime);
+    s = s.replace('{uptime}', d.prior_uptime);
     return s;
 }
 
@@ -149,6 +154,8 @@ function init() {
         checks[d].action = '';
         checks[d].last_poll = 0;
         checks[d].actions_processed = 0;
+        checks[d].prior_downtime = 0;
+        checks[d].prior_uptime = 0;
         if (!def(checks[d].enable)) checks[d].enable = true
     }
     for (let n in tasks) {
