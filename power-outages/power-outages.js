@@ -50,9 +50,8 @@ function poll_response(result, error_code, error_message, chk) {
         checks[chk].prior_state = checks[chk].state;
         checks[chk].state = new_state;
         checks[chk].action = 'changed';
-        if (new_state === "down") checks[chk].prior_downtime = Date.now() / 1000;
-        if (new_state === "up") checks[chk].prior_uptime = Date.now() / 1000;
-        print(checks[chk].prior_downtime + " time down. " + checks[chk].prior_uptime + " time up.")
+        if (new_state === "down") checks[chk].prior_downtime = Date.now();
+        if (new_state === "up") checks[chk].prior_uptime = Date.now();
         if (verbose > 0) print(checks[chk].name + " is now " + new_state + " [" + in_flight + "]");
         if (verbose > 0 && new_state === "up") print("Number of cycles was " + checks[chk].cycle_count);
     }
@@ -69,8 +68,8 @@ function apply_templates(s, d) {
     s = s.replace('{device}', d.name);
     s = s.replace('{state}', d.state);
     s = s.replace('{cycle_count}', d.cycle_count);
-    s = s.replace('{duration}', d.prior_uptime - d.prior_downtime);
-    s = s.replace('{uptime}', d.prior_uptime);
+    s = s.replace('{duration}', Math.round((d.prior_uptime - d.prior_downtime) / 1000));
+    s = s.replace('{uptime}', new Date(d.prior_uptime).toString());
     return s;
 }
 
@@ -95,10 +94,8 @@ function action(d) {
                     if (verbose > 0) print("resume-poll (still down)")
                     d.cycle_count += 1;
                     d.state = 'poll-again';
-                    console.log(d.cycle_count + " down");
                 } else {
                     if (verbose > 0) print("resume-poll (up)")
-                    console.log(d.cycle_count + " up");
                 }
             } else if (def(task_map[action.task].url)) {
                 in_flight++;
