@@ -7,7 +7,7 @@ Each action can be an MQTT message or an http web request.
 tasks = [{ "name": "turn-off-router", "url": "http://192.168.1.188/rpc/switch.Off?id=0" },
 { "name": "turn-on-router-after-delay", "delay": 10, "url": "http://192.168.1.189/rpc/switch.On?id=0" },
 { "name": "resume-polling-after-delay", "resume_poll": 30 },
-{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s). It was down for {duration} seconds and came up at {uptime}." }];
+{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s). It went down at {downtime}, was down for {duration} seconds and came up at {uptime}." }];
 
 checks = [{
     "name": "test-web-connection",
@@ -70,6 +70,7 @@ function apply_templates(s, d) {
     s = s.replace('{cycle_count}', d.cycle_count);
     s = s.replace('{duration}', Math.round((d.prior_uptime - d.prior_downtime) / 1000));
     s = s.replace('{uptime}', new Date(d.prior_uptime).toString());
+    s = s.replace('{downtime}', new Date(d.prior_downtime).toString());
     return s;
 }
 
