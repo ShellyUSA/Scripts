@@ -7,7 +7,7 @@ Each action can be an MQTT message or an http web request.
 tasks = [{ "name": "turn-off-router", "url": "http://192.168.1.188/rpc/switch.Off?id=0" },
 { "name": "turn-on-router-after-delay", "delay": 10, "url": "http://192.168.1.189/rpc/switch.On?id=0" },
 { "name": "resume-polling-after-delay", "resume_poll": 30 },
-{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s)" }];
+{ "name": "mq-c", "topic": "updown", "message": "{device} is {state} after {cycle_count} attempt(s). It went down at {downtime}, was down for {duration} seconds and came up at {uptime}." }];
 
 checks = [{
     "name": "test-web-connection",
@@ -47,8 +47,11 @@ function poll_response(result, error_code, error_message, chk) {
     if (error_code != 0) new_state = 'down';
     checks[chk].action = 'complete';
     if (new_state != checks[chk].state) {
+        checks[chk].prior_state = checks[chk].state;
         checks[chk].state = new_state;
         checks[chk].action = 'changed';
+        if (new_state === "down") checks[chk].prior_downtime = Date.now();
+        if (new_state === "up") checks[chk].prior_uptime = Date.now();
         if (verbose > 0) print(checks[chk].name + " is now " + new_state + " [" + in_flight + "]");
         if (verbose > 0 && new_state === "up") print("Number of cycles was " + checks[chk].cycle_count);
     }
@@ -65,6 +68,9 @@ function apply_templates(s, d) {
     s = s.replace('{device}', d.name);
     s = s.replace('{state}', d.state);
     s = s.replace('{cycle_count}', d.cycle_count);
+    s = s.replace('{duration}', Math.round((d.prior_uptime - d.prior_downtime) / 1000));
+    s = s.replace('{uptime}', new Date(d.prior_uptime).toString());
+    s = s.replace('{downtime}', new Date(d.prior_downtime).toString());
     return s;
 }
 
@@ -73,7 +79,7 @@ function action(d) {
     while (in_flight < 3 && d.actions_processed < d.actions.length) {
         let action = d.actions[d.actions_processed];
 
-        if (action.dir == 'both' || action.dir == d.state) {
+        if ((action.dir == 'both' || action.dir == d.state) && d.prior_state != 'unknown') {
             if (def(task_map[action.task].resume_poll)) task_map[action.task].delay = task_map[action.task].resume_poll;
             if (def(task_map[action.task].delay)) {
                 if (!def(task_map[action.task].end_of_delay)) {
@@ -89,10 +95,8 @@ function action(d) {
                     if (verbose > 0) print("resume-poll (still down)")
                     d.cycle_count += 1;
                     d.state = 'poll-again';
-                    console.log(d.cycle_count + " down");
                 } else {
                     if (verbose > 0) print("resume-poll (up)")
-                    console.log(d.cycle_count + " up");
                 }
             } else if (def(task_map[action.task].url)) {
                 in_flight++;
@@ -132,7 +136,7 @@ function check_states() {
             } else if (d.action == 'changed' && (d.state == 'up' || d.state == 'down')) {
                 action(d);
             }
-        } else 
+        } else
             if (verbose > 2) print(d.name + " is disabled [" + in_flight + "]");
         next_device++;
         if (next_device >= checks.length) next_device = 0;
@@ -144,9 +148,12 @@ function init() {
     if (verbose > 2) print("init");
     for (let d in checks) {
         checks[d].state = 'unknown';
+        checks[d].prior_state = 'unknown';
         checks[d].action = '';
         checks[d].last_poll = 0;
         checks[d].actions_processed = 0;
+        checks[d].prior_downtime = 0;
+        checks[d].prior_uptime = 0;
         if (!def(checks[d].enable)) checks[d].enable = true
     }
     for (let n in tasks) {
