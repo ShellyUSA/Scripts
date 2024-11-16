@@ -1,5 +1,7 @@
 // This script allows you to set upper and lower limits on the brightness of your Shelly Plus Wall Dimmer.
-// CONFIG:
+// Commissioned by Yandi Noa at Ikatu, created by clendinning1 and homeautomaton
+
+// CONFIG (add your limits here):
 lower_limit = 20
 upper_limit = 80
 
