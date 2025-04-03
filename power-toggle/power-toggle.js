@@ -4,7 +4,7 @@
 *
 * IMPORTANT!
 * REQUIRES the following settings:
-* 1. Toggle run on startup
+* 1. Toggle "Run on startup"
 * 2. Home > Output > Input/Output settings > Turn Off
 * 
 *
