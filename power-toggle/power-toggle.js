@@ -1,12 +1,12 @@
 /*
 * This script saves your last recorded state and restores its inverse
-* when power is lost and restored.
+* after power is lost.
 *
 * IMPORTANT!
 * REQUIRES the following settings:
-* 1. Run on startup
+* 1. Toggle run on startup
 * 2. Home > Output > Input/Output settings > Turn Off
-*
+* 
 *
 * Tested on versions 1.4.5 through 1.5.1.
 */
