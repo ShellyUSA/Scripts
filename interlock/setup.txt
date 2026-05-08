@@ -1,0 +1,36 @@
+Setup Instructions
+
+Step 1 — Set inputs to Detached mode
+
+For each input channel on the device:
+Open the Shelly app → select your device → Settings → Input/Output
+Set each input's mode to Detached (also called Decoupled on some firmware versions)
+This prevents the Shelly firmware from directly toggling relays on input events — the script takes full control
+
+Step 2 — Install the script
+
+Open the Shelly app or the device's local web UI
+Navigate to Scripts → Add Script
+Paste the full script above
+Give it a name (e.g. Interlock)
+Click Save
+
+Step 3 — Configure for your device
+
+| Device | NUMINPUTS | NUMRELAYS | |---|---|---| | Shelly 2PM / Plus 2PM | 2 | 2 | | Shelly 4PM / Pro 4PM | 4 | 4 | | Shelly Pro 3 | 3 | 3 | | Custom wiring | Set to actual count | Set to actual count |
+Edit the two lines at the top of the script:
+let NUM_INPUTS = 2; // ← change to your input count
+let NUM_RELAYS = 2; // ← change to your relay count
+Step 4 — Enable the script at startup
+In the Scripts panel, toggle "Run on startup" ON for the interlock script
+This ensures the interlock is always active after a power cycle
+
+Step 5 — Test
+
+| Action | Expected result | |---|---| | Turn any input OFF | All relays turn off immediately | | Turn input 0 ON | All relays off → verified off → relay 0 turns on | | Turn input 1 ON | All relays off → verified off → relay 1 turns on | | Turn input N ON while relay M is on | Relay M turns off first, then relay N turns on | | Relay stuck on (hardware fault) | Script retries up to 3× then logs an error and aborts safely |
+How the safety retry works
+If after issuing the "all off" command a relay still reads on during the confirmation check, the script:
+Issues another "all off" command
+Waits 200 ms
+Re-checks from relay 0
+Aborts and logs an error after MAXRETRIES (default: 3) failed attempts — preventing the target relay from ever energising while another is still live
